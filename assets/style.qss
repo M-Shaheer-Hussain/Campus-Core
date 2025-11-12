@@ -1,0 +1,139 @@
+/* File: assets/style.qss */
+
+/* Global */
+QWidget {
+    background-color: #f9fafc;
+    color: #333;
+    font-family: "Segoe UI";
+    font-size: 14px;
+}
+
+/* Title label */
+#titleLabel {
+    color: #2c3e50;
+}
+
+/* Buttons */
+QPushButton {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: bold;
+}
+
+#primaryButton {
+    background-color: #3498db;
+    color: white;
+}
+
+#primaryButton:hover {
+    background-color: #2980b9;
+}
+
+#secondaryButton {
+    background-color: #ecf0f1;
+    color: #2c3e50;
+    border: 1px solid #bdc3c7;
+}
+
+#secondaryButton:hover {
+    background-color: #dfe6e9;
+}
+
+/* --- Dashboard Specific Styles --- */
+/* Sidebar Frame Styling (to match the general app look) */
+#sidebarFrame {
+    background-color: #ecf0f1; /* Light background for sidebar */
+    border-right: 1px solid #bdc3c7;
+}
+
+/* Sidebar Buttons - Apply link/tab look for future functionalities */
+#sidebarButton {
+    background-color: #ecf0f1; /* Match sidebar background initially */
+    color: #2c3e50;
+    border: none;
+    text-align: left;
+    padding: 10px 15px;
+    border-radius: 0px; /* Make them look like selectable list items */
+    font-weight: normal;
+}
+
+#sidebarButton:hover {
+    background-color: #bdc3c7; /* Subtle hover effect */
+    font-weight: bold;
+}
+
+/* Content Area */
+#contentArea {
+    background-color: #f9fafc;
+}
+
+/* Header Label in Content Area */
+#headerLabel {
+    font-size: 16px;
+    color: #34495e;
+    padding: 10px;
+    border-bottom: 1px solid #bdc3c7;
+}
+
+/* --- Table Widget Styles --- */
+QTableWidget {
+    border: 1px solid #bdc3c7;
+    gridline-color: #dfe6e9;
+    background-color: white;
+    font-size: 13px;
+    border-radius: 8px;
+}
+
+/* Table Header */
+QHeaderView::section {
+    background-color: #ecf0f1;
+    padding: 8px;
+    border: none;
+    border-bottom: 1px solid #bdc3c7;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Table Items */
+QTableWidget::item {
+    padding: 8px;
+    border-bottom: 1px solid #dfe6e9; /* Lighter grid line */
+}
+
+/* Table Row Selection Style */
+QTableWidget::item:selected {
+    background-color: #3498db;
+    color: white;
+}
+
+/* --- NEW: Tree Widget Styles --- */
+QTreeWidget {
+    border: 1px solid #bdc3c7;
+    background-color: white;
+    font-size: 13px;
+    border-radius: 8px;
+    alternate-background-color: #fdfdfd; /* For alternating rows */
+}
+
+/* Tree Widget Items */
+QTreeWidget::item {
+    padding: 8px;
+    border-bottom: 1px solid #dfe6e9;
+    color: #333;
+}
+
+/* Tree Widget Selected Item */
+QTreeWidget::item:selected {
+    background-color: #3498db;
+    color: white;
+}
+
+/* Style for the expand/collapse arrow */
+QTreeWidget::branch {
+    /* We'll use the default system arrows, but can style them here */
+    background-color: white;
+}
+
+QTreeWidget::branch:selected {
+    background-color: #3498db;
+}
