@@ -153,7 +153,10 @@ class StudentFormWidget(QWidget):
         contact_frame.setLayout(self.contact_list_layout)
         self.add_contact_btn = QPushButton("Add Contact")
         self.add_contact_btn.setObjectName("secondaryButton")
-        self.add_contact_btn.clicked.connect(self.add_contact_row)
+        
+        # --- FIX: This line has been removed ---
+        # self.add_contact_btn.clicked.connect(self.add_contact_row) 
+        
         form_layout.addRow(QLabel("Contacts:"))
         form_layout.addRow(contact_frame)
         form_layout.addRow("", self.add_contact_btn)
@@ -348,7 +351,6 @@ class StudentFormWidget(QWidget):
         self.address.setText(student_data.get('address', ''))
         self.gender.setCurrentText(student_data.get('gender', 'Male'))
         
-        # Family Info
         if student_data.get('family_id'):
             self.radio_link_existing.setChecked(True)
             self.selected_family_id = student_data['family_id']
@@ -357,20 +359,18 @@ class StudentFormWidget(QWidget):
             self.linked_family_label.setText(f"Selected: {fam_name} ({fam_ssn})")
             self.linked_family_label.setStyleSheet("color: green; font-weight: bold;")
         
-        # Academic Info
         self.date_of_admission.setText(student_data.get('date_of_admission', ''))
         self.monthly_fee.setText(str(student_data.get('monthly_fee', '0.0')))
         self.annual_fund.setText(str(student_data.get('annual_fund', '0.0')))
         self.student_class.setText(student_data.get('class', ''))
 
-        # Contacts
         for row in list(self.contact_rows):
             row.deleteLater()
         self.contact_rows.clear()
         
         contacts = student_data.get('contacts', [])
         if not contacts:
-            self.add_contact_row() # Add one empty row
+            self.add_contact_row()
         else:
             for contact in contacts:
                 new_row = self.add_contact_row()
@@ -399,9 +399,8 @@ class StudentFormWidget(QWidget):
         self.contact_rows.clear()
         
         try:
-            # Disconnect all signals from student_class.returnPressed
             self.student_class.returnPressed.disconnect()
         except TypeError:
             pass 
             
-        self.add_contact_row() # This will reconnect it
+        self.add_contact_row()

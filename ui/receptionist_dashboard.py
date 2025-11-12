@@ -22,12 +22,14 @@ class ReceptionistDashboard(QWidget):
         
         # --- Get standard icons ---
         style = self.style()
-        self.add_icon = style.standardIcon(QStyle.SP_Person)
+        
+        # --- FIX: Removed .StandardPixmap from all icon paths ---
+        self.add_icon = style.standardIcon(QStyle.SP_FileDialogNewFolder)
         self.update_icon = style.standardIcon(QStyle.SP_DriveHDIcon)
         self.search_icon = style.standardIcon(QStyle.SP_FileDialogDetailedView)
         self.add_due_icon = style.standardIcon(QStyle.SP_FileLinkIcon)
         self.payment_icon = style.standardIcon(QStyle.SP_DialogApplyButton)
-        self.history_icon = style.standardIcon(QStyle.SP_DialogListButton)
+        self.history_icon = style.standardIcon(QStyle.SP_DialogResetButton)
         self.logout_icon = style.standardIcon(QStyle.SP_DialogCancelButton)
 
         self.init_ui()
