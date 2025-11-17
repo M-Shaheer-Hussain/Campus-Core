@@ -1,4 +1,4 @@
-# SMS/core/db_init.py
+# SMS/dal/db_init.py
 import sqlite3
 import os
 

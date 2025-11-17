@@ -9,11 +9,9 @@ from PyQt5.QtGui import QFont
 from ui.signup_window import SignupWindow
 from ui.receptionist_dashboard import ReceptionistDashboard
 from ui.login_window import LoginWindow 
-from core.db_init import initialize_db
-
-# --- Add this to fix the path for importing from the 'scripts' folder ---
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from scripts.add_monthly_fees import add_monthly_fees_for_all_students
+# --- FIX: Update imports ---
+from dal.db_init import initialize_db
+from business.due_service import add_monthly_fees_for_all_students # Script logic now in Service
 # --- End of new imports ---
 
 class WelcomeWindow(QWidget):

@@ -1,10 +1,11 @@
 # SMS/ui/add_student_widget.py
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMessageBox, QLabel
-# --- FIX: Added import for Qt ---
 from PyQt5.QtCore import Qt
-from .add_student_form import StudentFormWidget # <-- Import the refactored form
-from core.student_operations import add_student
-from core.due_operations import add_specific_monthly_fee
+from .add_student_form import StudentFormWidget
+# --- FIX: Update imports to Service layers ---
+from business.student_service import add_student
+from business.due_service import add_specific_monthly_fee
+# --- END FIX ---
 
 class AddStudentWidget(QWidget):
     """
@@ -46,7 +47,7 @@ class AddStudentWidget(QWidget):
 
     def handle_submit_add(self):
         """
-        Handles the logic for *adding* a new student.
+        Handles the logic for *adding* a new student. (Calls Service Layer)
         """
         # 1. Get validated data from the form
         data, contacts, family_id, is_valid = self.form_widget.get_data()

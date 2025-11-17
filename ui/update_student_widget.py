@@ -2,10 +2,12 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QMessageBox, QGroupBox, QLabel
 )
-from .add_student_form import StudentFormWidget # <-- Import the refactored form
+from .add_student_form import StudentFormWidget
 from .search_student_widget import SearchStudentWidget
-from core.student_operations import get_student_details_by_id, update_student
-from core.utils import show_warning
+# --- FIX: Update imports to Service/Common layers ---
+from business.student_service import get_student_details_by_id, update_student
+from common.utils import show_warning
+# --- END FIX ---
 
 class UpdateStudentWidget(QWidget):
     """
@@ -48,7 +50,7 @@ class UpdateStudentWidget(QWidget):
         self.form_group.setEnabled(False)
 
     def on_student_selected(self):
-        """Called when a student is selected in the search widget."""
+        """Called when a student is selected in the search widget. (Calls Service)"""
         student_id, _ = self.search_widget.get_selected_student()
         
         if not student_id:
@@ -87,7 +89,7 @@ class UpdateStudentWidget(QWidget):
 
     def handle_submit_update(self):
         """
-        Handles the logic for *updating* an existing student.
+        Handles the logic for *updating* an existing student. (Calls Service Layer)
         """
         if not self.current_student_id or not self.current_person_id:
             show_warning(self, "Error", "No student selected.")

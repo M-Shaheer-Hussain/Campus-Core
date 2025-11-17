@@ -1,8 +1,9 @@
-# File: core/emailer.py
+# File: common/emailer.py
 import random
 import smtplib
 from email.mime.text import MIMEText
 
+ADMIN_EMAIL = "l230639@lhr.nu.edu.pk"  # replace with actual admin email
 ADMIN_EMAIL = "l230639@lhr.nu.edu.pk"  # replace with actual admin email
 
 def generate_code():

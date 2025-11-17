@@ -6,7 +6,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from core.student_operations import search_students
+# --- FIX: Update imports to Service Layer ---
+from business.student_service import search_students
+# --- END FIX ---
 from ui.student_details_window import StudentDetailsWindow 
 
 class SearchStudentWidget(QWidget):
@@ -61,6 +63,7 @@ class SearchStudentWidget(QWidget):
             self.results_tree.itemDoubleClicked.connect(self.on_open_details_window) 
 
     def on_search(self):
+        """(Calls Service Layer)"""
         search_term = self.search_input.text().strip()
         self.results_tree.clear() 
         

@@ -3,7 +3,9 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QDialogButtonBox,
     QLineEdit, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
 )
-from core.student_operations import search_families
+# --- FIX: Update imports to Service Layer ---
+from business.student_service import search_families
+# --- END FIX ---
 
 class FamilySearchDialog(QDialog):
     """
@@ -55,7 +57,7 @@ class FamilySearchDialog(QDialog):
         self.results_table.itemDoubleClicked.connect(self.on_accept)
 
     def on_search(self):
-        """Performs the search and populates the table."""
+        """Performs the search and populates the table. (Calls Service)"""
         search_term = self.search_input.text().strip()
         if not search_term:
             return

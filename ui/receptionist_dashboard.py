@@ -23,7 +23,6 @@ class ReceptionistDashboard(QWidget):
         # --- Get standard icons ---
         style = self.style()
         
-        # --- FIX: Removed .StandardPixmap from all icon paths ---
         self.add_icon = style.standardIcon(QStyle.SP_FileDialogNewFolder)
         self.update_icon = style.standardIcon(QStyle.SP_DriveHDIcon)
         self.search_icon = style.standardIcon(QStyle.SP_FileDialogDetailedView)

@@ -4,13 +4,14 @@ from PyQt5.QtWidgets import (
     QMessageBox, QComboBox
 )
 from PyQt5.QtCore import Qt
-from core.db_receptionist import add_receptionist
-from core.emailer import generate_code, send_code
-# Import reusable utilities
-from core.utils import (
+# --- FIX: Update imports to Service/Common layers ---
+from business.receptionist_service import add_receptionist # This is the renamed file!
+from common.emailer import generate_code, send_code
+from common.utils import (
     show_warning, validate_required_fields, validate_dob_not_current_year,
     validate_password_length
 )
+# --- END FIX ---
 from datetime import datetime
 
 class SignupWindow(QWidget):
@@ -127,6 +128,7 @@ class SignupWindow(QWidget):
         self.code_input.returnPressed.connect(self.handle_signup)
 
     def handle_generate_code(self):
+        """(Calls Common Layer)"""
         self.verification_code = generate_code()
         send_code(self.verification_code)
         QMessageBox.information(self, "Code Sent", "Verification code sent to admin email.")
@@ -160,7 +162,7 @@ class SignupWindow(QWidget):
             "email": "Email", "phone": "Phone Number", "password": "Password", "code": "Verification Code"
         }
         
-        # 1. Validate required fields
+        # 1. Validate required fields (Calls Common Layer)
         is_valid, error_message = validate_required_fields(data, required_fields, display_names)
         if not is_valid:
             show_warning(self, "Validation Error", error_message)
@@ -171,13 +173,13 @@ class SignupWindow(QWidget):
             show_warning(self, "Validation Error", "Please select a valid Gender.")
             return
 
-        # 3. Validate password length
+        # 3. Validate password length (Calls Common Layer)
         is_valid, error_message = validate_password_length(data['password'])
         if not is_valid:
             show_warning(self, "Error", error_message)
             return
 
-        # 4. DOB validation: format and not current year
+        # 4. DOB validation: format and not current year (Calls Common Layer)
         is_valid, error_message = validate_dob_not_current_year(data['dob'])
         if not is_valid:
             show_warning(self, "Invalid Date", error_message)
@@ -198,6 +200,7 @@ class SignupWindow(QWidget):
         ]
 
         try:
+            # 6. Add Receptionist (Calls Service Layer)
             add_receptionist(data['father'], data['mother'], data['dob'], data['address'], data['gender'],
                               data['first'], data['middle'], data['last'], data['password'], contacts)
             QMessageBox.information(self, "Success", "Receptionist added successfully!")

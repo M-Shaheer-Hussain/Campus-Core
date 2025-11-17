@@ -5,8 +5,10 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from core.student_operations import get_student_contacts
-from core.due_operations import get_unpaid_dues_for_student
+# --- FIX: Update imports to Service Layer ---
+from business.student_service import get_student_contacts
+from business.due_service import get_unpaid_dues_for_student
+# --- END FIX ---
 
 class StudentDetailsWindow(QWidget):
     """
@@ -91,7 +93,6 @@ class StudentDetailsWindow(QWidget):
         tree.setHeaderHidden(True)
         return tree
 
-    # --- UPDATED: This is now the Summary Page ---
     def create_summary_page(self):
         """Creates the main student & family info summary page."""
         page_widget = QWidget()
@@ -131,7 +132,7 @@ class StudentDetailsWindow(QWidget):
         return page_widget
 
     def create_contact_page(self):
-        """Creates the 'Contact Info' table page."""
+        """Creates the 'Contact Info' table page. (Calls Service)"""
         table = QTableWidget()
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Type", "Label", "Value"])
@@ -164,7 +165,7 @@ class StudentDetailsWindow(QWidget):
         return table
 
     def create_dues_page(self):
-        """Creates the 'Pending Dues' table page."""
+        """Creates the 'Pending Dues' table page. (Calls Service)"""
         table = QTableWidget()
         table.setColumnCount(6)
         table.setHorizontalHeaderLabels([

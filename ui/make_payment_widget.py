@@ -7,8 +7,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from datetime import datetime
 from .student_search_dialog import StudentSearchDialog
-from core.due_operations import get_unpaid_dues_for_student, make_payment
-from core.utils import show_warning
+# --- FIX: Update imports to Service/Common layers ---
+from business.due_service import get_unpaid_dues_for_student, make_payment
+from common.utils import show_warning
+# --- END FIX ---
 
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtGui import QPainter, QFont, QColor
@@ -75,8 +77,6 @@ class MakePaymentWidget(QWidget):
         self.payment_mode_combo = QComboBox()
         self.payment_mode_combo.addItems(["Cash", "Credit Card", "Bank Transfer"])
         
-        # --- FIX: Removed the payment_timestamp_input field ---
-        
         self.received_by_label = QLabel(self.received_by_user)
         self.received_by_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
         
@@ -86,7 +86,6 @@ class MakePaymentWidget(QWidget):
         
         payment_layout.addRow("Amount to Pay:", self.amount_to_pay_input)
         payment_layout.addRow("Payment Mode:", self.payment_mode_combo)
-        # --- FIX: Removed the timestamp row ---
         payment_layout.addRow("Received By:", self.received_by_label) 
         payment_layout.addRow(self.submit_payment_btn)
         
@@ -112,7 +111,7 @@ class MakePaymentWidget(QWidget):
                 self.load_unpaid_dues()
 
     def load_unpaid_dues(self):
-        """Loads the unpaid dues for the selected student into the table."""
+        """Loads the unpaid dues for the selected student into the table. (Calls Service)"""
         if not self.selected_student_id:
             return
             
@@ -149,14 +148,12 @@ class MakePaymentWidget(QWidget):
         self.selected_amount_remaining = float(self.dues_table.item(selected_row, 4).text())
         
         self.amount_to_pay_input.setText(f"{self.selected_amount_remaining:.2f}")
-        # --- FIX: No timestamp field to update anymore ---
         self.payment_group.setEnabled(True)
 
     def handle_submit_payment(self):
-        """Validates and submits the payment."""
+        """Validates and submits the payment. (Calls Service Layer)"""
         amount_str = self.amount_to_pay_input.text().strip()
         payment_mode = self.payment_mode_combo.currentText()
-        # --- FIX: Generate timestamp on click ---
         payment_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         due_type = self.dues_table.item(self.dues_table.currentRow(), 1).text()
@@ -181,8 +178,6 @@ class MakePaymentWidget(QWidget):
             show_warning(self, "Error", "Payment amount must be a valid number.")
             return
             
-        # --- FIX: No date field to validate, so check is removed ---
-        
         # --- Submit to Database ---
         success, message, new_payment_id = make_payment(
             self.selected_pending_due_id,
@@ -320,4 +315,4 @@ class MakePaymentWidget(QWidget):
             
             painter.end()
         else:
-            QMessageBox.warning(self, "Print Cancelled", "The receipt was not printed.")
+            show_warning(self, "Print Cancelled", "The receipt was not printed.")

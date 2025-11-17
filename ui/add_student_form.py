@@ -6,11 +6,13 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QFont
-from core.student_operations import get_next_family_ssn, get_or_create_family
-from core.utils import (
+# --- FIX: Update imports to Service/Common layers ---
+from business.student_service import get_next_family_ssn, get_or_create_family
+from common.utils import (
     show_warning, validate_required_fields, validate_date_format, 
     validate_phone_length, validate_is_float, validate_ssn
 )
+# --- END FIX ---
 from .family_search_dialog import FamilySearchDialog
 from datetime import datetime
 
@@ -60,7 +62,7 @@ class StudentFormWidget(QWidget):
         self.load_initial_data()
 
     def load_initial_data(self):
-        """Fetches data needed when the form loads, like the next SSN."""
+        """Fetches data needed when the form loads, like the next SSN. (Calls Service)"""
         self.next_available_ssn = get_next_family_ssn()
         self.new_family_ssn_label.setText(self.next_available_ssn)
 
@@ -154,9 +156,6 @@ class StudentFormWidget(QWidget):
         self.add_contact_btn = QPushButton("Add Contact")
         self.add_contact_btn.setObjectName("secondaryButton")
         
-        # --- FIX: This line has been removed ---
-        # self.add_contact_btn.clicked.connect(self.add_contact_row) 
-        
         form_layout.addRow(QLabel("Contacts:"))
         form_layout.addRow(contact_frame)
         form_layout.addRow("", self.add_contact_btn)
@@ -244,6 +243,7 @@ class StudentFormWidget(QWidget):
         """
         Validates all fields and returns the data for submission.
         Returns: (data_dict, contacts, family_id, is_valid)
+        (Calls Service)
         """
         data = {
             "first_name": self.first_name.text().strip(),
@@ -291,7 +291,7 @@ class StudentFormWidget(QWidget):
             show_warning(self, "Invalid Fund", f"Annual Fund: {ann_msg}")
             return None, None, None, False
             
-        # --- Family ID Logic ---
+        # --- Family ID Logic (Calls Service) ---
         final_family_id = None
         if self.radio_create_new.isChecked():
             new_ssn = self.new_family_ssn_label.text()
@@ -339,7 +339,7 @@ class StudentFormWidget(QWidget):
         return data, contacts, final_family_id, True
 
     def populate_data(self, student_data):
-        """Fills the form with existing student data."""
+        """Fills the form with existing student data. (Pulls data from Service/UI)"""
         self.clear_fields()
         
         self.first_name.setText(student_data.get('first_name', ''))

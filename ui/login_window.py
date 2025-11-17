@@ -3,7 +3,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from core.db_login import validate_admin, validate_receptionist
+# --- FIX: Update imports to Service Layer ---
+from business.login_service import validate_admin, validate_receptionist
+# --- END FIX ---
 
 class LoginWindow(QWidget):
     def __init__(self, role, go_back_callback, open_dashboard_callback):
@@ -74,7 +76,7 @@ class LoginWindow(QWidget):
             QMessageBox.warning(self, "Error", "Please enter both username and password.")
             return
 
-        # Validate based on role
+        # Validate based on role (Calls Service Layer)
         if self.role == "Admin":
             valid = validate_admin(username, password)
         else:

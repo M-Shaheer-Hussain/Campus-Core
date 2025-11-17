@@ -7,7 +7,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from .student_search_dialog import StudentSearchDialog
-from core.due_operations import get_all_student_dues_with_summary, get_payments_for_due
+# --- FIX: Update imports to Service Layer ---
+from business.due_service import get_all_student_dues_with_summary, get_payments_for_due
+# --- END FIX ---
 
 class PaymentHistoryWidget(QWidget):
     """
@@ -81,7 +83,7 @@ class PaymentHistoryWidget(QWidget):
                 self.load_dues_summary()
 
     def load_dues_summary(self):
-        """Loads the summary of all dues for the selected student."""
+        """Loads the summary of all dues for the selected student. (Calls Service)"""
         if not self.selected_student_id:
             return
             
@@ -121,7 +123,7 @@ class PaymentHistoryWidget(QWidget):
             self.history_tree.resizeColumnToContents(i)
 
     def on_due_expand(self, item):
-        """Lazy-loads the installments (payments) for a due."""
+        """Lazy-loads the installments (payments) for a due. (Calls Service)"""
         if item.childCount() != 1 or item.child(0).text(0) != "Loading installments...":
             return # Already loaded
             

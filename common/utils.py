@@ -1,4 +1,4 @@
-# SMS/core/utils.py
+# SMS/common/utils.py
 from PyQt5.QtWidgets import QMessageBox
 from datetime import datetime
 import re
@@ -90,4 +90,4 @@ def validate_ssn(ssn_str, required_length=9):
     digits_only = re.sub(r'\D', '', ssn_str)
     if len(digits_only) != required_length:
         return False, f"Family SSN must be exactly {required_length} digits."
-    return True, digits_only # Return the cleaned SSN
+    return True, digits_only

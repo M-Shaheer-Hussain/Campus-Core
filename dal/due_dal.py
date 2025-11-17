@@ -1,16 +1,10 @@
-# SMS/core/due_operations.py
+# SMS/dal/due_dal.py
 import sqlite3
-import os
-from core.db_init import connect_db
-from datetime import datetime
+from dal.db_init import connect_db
 
-def add_manual_due(student_id, due_type, amount, due_date):
-    """
-    Manually adds a new pending due to a specific student.
-    """
+def dal_add_manual_due(student_id, due_type, amount, due_date):
     conn = connect_db()
     cursor = conn.cursor()
-    
     try:
         cursor.execute("""
             INSERT INTO pending_due (student_id, due_type, amount_due, due_date, status)
@@ -19,26 +13,14 @@ def add_manual_due(student_id, due_type, amount, due_date):
         conn.commit()
         return True
     except Exception as e:
-        print(f"[ERROR] add_manual_due: {e}")
         conn.rollback()
-        return False
+        raise e
     finally:
         conn.close()
 
-# --- NEW FUNCTION ---
-def check_if_monthly_fee_was_run():
-    """
-    Checks if the monthly fee script has been run for the current month.
-    Returns (True, "Monthly Fee - [Month] [Year]") if it has.
-    Returns (False, None) if it has not.
-    """
+def dal_check_for_due_type(specific_due_type):
     conn = connect_db()
     cursor = conn.cursor()
-    
-    today = datetime.now()
-    current_month_year = today.strftime("%B %Y")
-    specific_due_type = f"Monthly Fee - {current_month_year}"
-    
     try:
         cursor.execute("""
             SELECT 1 
@@ -46,74 +28,55 @@ def check_if_monthly_fee_was_run():
             WHERE due_type = ?
             LIMIT 1
         """, (specific_due_type,))
-        
-        if cursor.fetchone():
-            return True, specific_due_type
-        else:
-            return False, None
-            
-    except Exception as e:
-        print(f"[ERROR] check_if_monthly_fee_was_run: {e}")
-        return False, None
+        return cursor.fetchone() is not None
     finally:
         conn.close()
 
-# --- NEW FUNCTION ---
-def add_specific_monthly_fee(student_id, fee_amount, due_type_name):
-    """
-    Directly adds a specific monthly fee to a new student.
-    Used when the receptionist confirms adding a fee after the script has run.
-    """
+def dal_add_specific_monthly_fee(student_id, due_type_name, fee_amount, due_date):
     conn = connect_db()
     cursor = conn.cursor()
-    
-    today = datetime.now()
-    due_date = today.strftime('%Y-%m-10') # Standard due date
-    
     try:
         cursor.execute("""
             INSERT INTO pending_due (student_id, due_type, amount_due, due_date, status)
             VALUES (?, ?, ?, ?, 'unpaid')
         """, (student_id, due_type_name, fee_amount, due_date))
         conn.commit()
-        print(f"Successfully added fee '{due_type_name}' for new student ID: {student_id}")
+        return True
     except Exception as e:
-        print(f"[ERROR] add_specific_monthly_fee: {e}")
         conn.rollback()
+        raise e
     finally:
         conn.close()
 
-def get_student_pending_dues(student_id):
-    """Fetches all unpaid dues for a given student ID."""
+def dal_get_all_students_for_fees():
     conn = connect_db()
-    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
-    query = """
-        SELECT due_type, amount_due, due_date, status
-        FROM pending_due
-        WHERE student_id = ? AND status != 'paid'
-        ORDER BY due_date ASC
-    """
     try:
-        cursor.execute(query, (student_id,))
-        results = [dict(row) for row in cursor.fetchall()]
-        return results
-    except Exception as e:
-        print(f"[ERROR] get_student_pending_dues: {e}")
-        return []
+        cursor.execute("SELECT id, monthly_fee FROM student")
+        return cursor.fetchall()
     finally:
         conn.close()
 
-def get_unpaid_dues_for_student(student_id):
-    """
-    Fetches all dues for a student that are not fully paid.
-    Calculates what has already been paid.
-    """
+def dal_insert_monthly_dues_batch(dues_to_add):
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.executemany("""
+            INSERT INTO pending_due (student_id, due_type, amount_due, due_date, status)
+            VALUES (?, ?, ?, ?, ?)
+        """, dues_to_add)
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def dal_get_unpaid_dues_for_student(student_id):
     conn = connect_db()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
     query = """
         SELECT
             pd.id as pending_due_id,
@@ -132,35 +95,25 @@ def get_unpaid_dues_for_student(student_id):
     """
     try:
         cursor.execute(query, (student_id,))
-        results = [dict(row) for row in cursor.fetchall()]
-        return results
-    except Exception as e:
-        print(f"[ERROR] get_unpaid_dues_for_student: {e}")
-        return []
+        return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
 
-def make_payment(pending_due_id, amount_paid, payment_mode, payment_timestamp, received_by_user):
-    """
-    Records a payment for a pending due in a transaction.
-    Updates the due's status if fully paid.
-    Returns (True, new_status, new_payment_id) on success.
-    Returns (False, error_message, None) on failure.
-    """
+def dal_make_payment_transaction(pending_due_id, amount_paid, payment_timestamp, payment_mode, received_by_user):
     conn = connect_db()
     cursor = conn.cursor()
     new_payment_id = None
-    
     try:
         cursor.execute("BEGIN")
         
+        # 1. Insert payment record
         cursor.execute("""
             INSERT INTO payment_record (pending_due_id, amount_paid, payment_timestamp, payment_mode, received_by_user)
             VALUES (?, ?, ?, ?, ?)
         """, (pending_due_id, amount_paid, payment_timestamp, payment_mode, received_by_user))
-        
         new_payment_id = cursor.lastrowid
         
+        # 2. Get amount due and total paid
         cursor.execute("SELECT amount_due FROM pending_due WHERE id = ?", (pending_due_id,))
         row = cursor.fetchone()
         if not row:
@@ -174,10 +127,12 @@ def make_payment(pending_due_id, amount_paid, payment_mode, payment_timestamp, r
         """, (pending_due_id,))
         total_paid = cursor.fetchone()[0]
         
+        # 3. Determine new status
         new_status = 'partially paid'
         if total_paid >= amount_due:
             new_status = 'paid'
             
+        # 4. Update pending due status
         cursor.execute("""
             UPDATE pending_due 
             SET status = ? 
@@ -185,24 +140,18 @@ def make_payment(pending_due_id, amount_paid, payment_mode, payment_timestamp, r
         """, (new_status, pending_due_id))
         
         conn.commit()
-        return True, new_status, new_payment_id
+        return new_status, new_payment_id
         
     except Exception as e:
-        print(f"[ERROR] make_payment transaction failed: {e}")
         conn.rollback()
-        return False, str(e), None
+        raise e
     finally:
         conn.close()
 
-def get_all_student_dues_with_summary(student_id):
-    """
-    Fetches ALL dues for a student (paid, unpaid, etc.) and
-    calculates their payment summary.
-    """
+def dal_get_all_student_dues_with_summary(student_id):
     conn = connect_db()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
     query = """
         SELECT
             pd.id as pending_due_id,
@@ -220,23 +169,14 @@ def get_all_student_dues_with_summary(student_id):
     """
     try:
         cursor.execute(query, (student_id,))
-        results = [dict(row) for row in cursor.fetchall()]
-        return results
-    except Exception as e:
-        print(f"[ERROR] get_all_student_dues_with_summary: {e}")
-        return []
+        return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
 
-def get_payments_for_due(pending_due_id):
-    """
-    Fetches all individual payment records (installments) for a
-    single pending due, ordered by date.
-    """
+def dal_get_payments_for_due(pending_due_id):
     conn = connect_db()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
     query = """
         SELECT payment_timestamp, amount_paid, payment_mode, received_by_user
         FROM payment_record
@@ -245,10 +185,6 @@ def get_payments_for_due(pending_due_id):
     """
     try:
         cursor.execute(query, (pending_due_id,))
-        results = [dict(row) for row in cursor.fetchall()]
-        return results
-    except Exception as e:
-        print(f"[ERROR] get_payments_for_due: {e}")
-        return []
+        return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()

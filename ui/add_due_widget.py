@@ -1,16 +1,16 @@
 # SMS/ui/add_due_widget.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout,
-    QMessageBox, QHBoxLayout, QDialog  # --- FIX: Added QDialog here ---
+    QMessageBox, QHBoxLayout, QDialog
 )
 from PyQt5.QtCore import Qt, QDate
-from core.due_operations import add_manual_due
-from core.utils import show_warning, validate_required_fields, validate_date_format, validate_is_float
+# --- FIX: Update imports to Service/Common layers ---
+from business.due_service import add_manual_due
+from common.utils import show_warning, validate_required_fields, validate_date_format, validate_is_float
 from datetime import datetime
-# --- Import the new search dialog ---
 from .student_search_dialog import StudentSearchDialog
-# Import check_student_exists from the correct module
-from core.student_operations import check_student_exists
+from business.student_service import check_student_exists # Service Layer
+# --- END FIX ---
 
 class AddDueWidget(QWidget):
     """
@@ -124,7 +124,7 @@ class AddDueWidget(QWidget):
             show_warning(self, "Validation Error", f"Due Date: {error_msg}")
             return
             
-        # 5. Add to database
+        # 5. Add to database (Call Service Layer)
         try:
             success = add_manual_due(
                 self.selected_student_id, 

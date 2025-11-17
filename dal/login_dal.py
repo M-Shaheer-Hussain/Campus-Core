@@ -1,16 +1,8 @@
-import sqlite3
+# SMS/dal/login_dal.py
+from dal.db_init import connect_db
 
-DB_PATH = "data/campuscore.db"
-
-def validate_admin(username, password):
-    """
-    Admin username: 'FirstName LastName'
-    """
-    if " " not in username:
-        return False
-    first_name, last_name = username.strip().split(" ", 1)
-
-    conn = sqlite3.connect(DB_PATH)
+def dal_validate_admin(first_name, last_name, password):
+    conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT a.id
@@ -22,16 +14,8 @@ def validate_admin(username, password):
     conn.close()
     return bool(result)
 
-
-def validate_receptionist(username, password):
-    """
-    Receptionist username: 'FirstName LastName'
-    """
-    if " " not in username:
-        return False
-    first_name, last_name = username.strip().split(" ", 1)
-
-    conn = sqlite3.connect(DB_PATH)
+def dal_validate_receptionist(first_name, last_name, password):
+    conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT r.id
