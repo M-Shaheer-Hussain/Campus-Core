@@ -2,17 +2,17 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTreeWidget, 
     QTreeWidgetItem, QAbstractItemView, QGroupBox, QFormLayout, QDialog,
-    QHeaderView, QMessageBox # Added QMessageBox
+    QHeaderView, QMessageBox
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QPainter, QColor # Added QPainter, QColor
-from PyQt5.QtPrintSupport import QPrintDialog, QPrinter # Added QPrintDialog, QPrinter
+from PyQt5.QtGui import QFont, QPainter, QColor
+from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from .student_search_dialog import StudentSearchDialog
 # --- FIX: Update imports to Service Layer ---
 from business.due_service import get_all_student_dues_with_summary, get_payments_for_due
 # --- END FIX ---
-from common.utils import show_warning # Added show_warning
-from datetime import datetime # Added datetime for slip generation timestamp
+from common.utils import show_warning
+from datetime import datetime
 
 class PaymentHistoryWidget(QWidget):
     """
@@ -60,9 +60,16 @@ class PaymentHistoryWidget(QWidget):
         self.history_tree.setAlternatingRowColors(True)
         self.history_tree.setRootIsDecorated(True) # Show expand arrows
         
-        self.history_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        # --- FIX: Set column 6 (the empty one) to stretch ---
-        self.history_tree.header().setSectionResizeMode(6, QHeaderView.Stretch)
+        # --- FIX: Explicitly set resize modes to ensure full width ---
+        header = self.history_tree.header()
+        
+        # 1. Set the Description column (0) to stretch to fill remaining horizontal space
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        
+        # 2. Set all other columns (1 through 6) to resize to contents
+        for i in range(1, self.history_tree.columnCount()): 
+            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+        # --- END FIX ---
         
         # New: Print Button
         self.btn_print_slip = QPushButton("Generate Payment Slip/Challan")
@@ -129,9 +136,10 @@ class PaymentHistoryWidget(QWidget):
             placeholder = QTreeWidgetItem(due_item, ["Loading installments..."])
             placeholder.setDisabled(True)
 
-        # --- FIX: Resize all columns *except* the stretched column 6 ---
-        for i in range(self.history_tree.columnCount() - 1):
+        # --- FIX: Resize only the columns set to ResizeToContents (1-6) based on data ---
+        for i in range(1, self.history_tree.columnCount()): 
             self.history_tree.resizeColumnToContents(i)
+        # --- END FIX ---
 
     def on_due_expand(self, item):
         """Lazy-loads the installments (payments) for a due. (Calls Service)"""

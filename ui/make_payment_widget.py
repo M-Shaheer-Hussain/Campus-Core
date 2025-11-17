@@ -3,14 +3,14 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QMessageBox,
     QFormLayout, QGroupBox, QComboBox, QDialog,
-    QHeaderView # Ensure QHeaderView is imported (it is via QWidget import)
+    QHeaderView
 )
 from PyQt5.QtCore import Qt
 from datetime import datetime
 from .student_search_dialog import StudentSearchDialog
 # --- FIX: Update imports to Service/Common layers ---
 from business.due_service import get_unpaid_dues_for_student, make_payment
-from common.utils import show_warning, validate_is_positive_float # <-- NEW IMPORT
+from common.utils import show_warning, validate_is_positive_float
 # --- END FIX ---
 
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
@@ -144,7 +144,8 @@ class MakePaymentWidget(QWidget):
             self.dues_table.setItem(row, 4, QTableWidgetItem(f"{due['amount_remaining']:.2f}"))
             self.dues_table.setItem(row, 5, QTableWidgetItem(due['due_date']))
         
-        self.dues_table.resizeColumnsToContents()
+        # REMOVED: self.dues_table.resizeColumnsToContents() to fix the shrinking issue.
+        # The stretching policy set in init_ui will now correctly fill the space.
 
     def on_due_selected(self, item):
         """Fires when a due is clicked. Populates the payment form."""
