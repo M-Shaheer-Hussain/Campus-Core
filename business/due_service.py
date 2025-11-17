@@ -13,7 +13,17 @@ logging.basicConfig(level=logging.INFO)
 def add_manual_due(student_id, due_type, amount, due_date):
     """
     Service method to manually add a new pending due.
+    Applies Business Rule: Manual Due Date Must Not Be Past.
     """
+    # Import validation utilities here to avoid circular dependency issues
+    from common.utils import validate_is_not_future_date
+    
+    # 1. Apply Business Rule: Due Date Must Not Be Past (by checking 'is_not_future_date')
+    is_valid, error_msg = validate_is_not_future_date(due_date)
+    if not is_valid:
+        logging.error(f"[ERROR] add_manual_due: Due date is in the future: {due_date}")
+        return False
+        
     try:
         return dal_add_manual_due(student_id, due_type, amount, due_date)
     except Exception as e:

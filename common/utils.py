@@ -54,14 +54,7 @@ def validate_dob_not_current_year(dob_str, format_str="%Y-%m-%d"):
     except ValueError:
         return False, "An unexpected date error occurred."
 
-def validate_password_length(password, min_length=8):
-    """
-    Validates that the password meets the minimum length requirement.
-    """
-    if len(password) < min_length:
-        return False, f"Password must be at least {min_length} characters."
-    return True, None
-    
+# --- Phone Length Rule (Fixes the ImportError) ---
 def validate_phone_length(phone_number, required_length=11):
     """
     Validates that the phone number is exactly the required length (11 digits).
@@ -70,18 +63,93 @@ def validate_phone_length(phone_number, required_length=11):
     if len(digits_only) != required_length:
         return False, f"Phone number must be exactly {required_length} digits long."
     return True, None
+# --- End Phone Length Rule ---
+
+def validate_password_length(password, min_length=8):
+    """
+    (Rule: Password Security) Validates that the password meets the minimum length requirement.
+    """
+    if len(password) < min_length:
+        return False, f"Password must be at least {min_length} characters."
+    return True, None
+
+def validate_is_not_future_date(date_str, format_str="%Y-%m-%d"):
+    """
+    (Rule: Admission/Due Date) Validates that a date string is today or in the past.
+    """
+    is_valid, error_msg = validate_date_format(date_str, format_str)
+    if not is_valid:
+        return False, error_msg
+        
+    try:
+        input_dt = datetime.strptime(date_str, format_str).date()
+        today = datetime.now().date()
+        
+        if input_dt > today:
+            return False, "Date cannot be in the future."
+        return True, None
+    except ValueError:
+        return False, "An unexpected date error occurred."
+
+
+def validate_min_age_at_event(dob_str, event_date_str, min_years, dob_format="%Y-%m-%d", event_format="%Y-%m-%d"):
+    """
+    (Rule: Minimum Age) Validates that the person is at least min_years old by the event date.
+    """
+    try:
+        dob_dt = datetime.strptime(dob_str, dob_format).date()
+        event_dt = datetime.strptime(event_date_str, event_format).date()
+        
+        # Calculate age at event date
+        age = event_dt.year - dob_dt.year - ((event_dt.month, event_dt.day) < (dob_dt.month, dob_dt.day))
+
+        if age < min_years:
+            return False, f"Student must be at least {min_years} years old at the time of admission."
+        return True, None
+    except ValueError:
+        return False, "Invalid date format provided for DOB or Admission Date."
+
 
 def validate_is_float(value_str):
     """
-    Validates that a string can be converted to a positive float.
+    Validates that a string can be converted to a float (allowing any value).
     """
     try:
-        value = float(value_str)
-        if value < 0:
-            return False, "Value cannot be negative."
+        float(value_str)
         return True, None
     except ValueError:
         return False, "Value must be a valid number (e.g., 1500.0)."
+
+
+def validate_is_positive_non_zero_float(value_str):
+    """
+    (Rule: Minimum Fee) Validates that a string can be converted to a positive float (> 0).
+    """
+    is_valid, error_msg = validate_is_float(value_str)
+    if not is_valid:
+        return False, error_msg
+        
+    value = float(value_str)
+    if value <= 0:
+        return False, "Value must be greater than zero."
+        
+    return True, None
+
+
+def validate_is_positive_float(value_str):
+    """
+    (Rule: Payment Amount) Validates that a string can be converted to a positive float (>= 0).
+    """
+    is_valid, error_msg = validate_is_float(value_str)
+    if not is_valid:
+        return False, error_msg
+        
+    value = float(value_str)
+    if value < 0:
+        return False, "Value cannot be negative."
+        
+    return True, None
+
 
 def validate_ssn(ssn_str, required_length=9):
     """

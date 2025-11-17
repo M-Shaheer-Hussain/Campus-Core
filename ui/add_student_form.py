@@ -10,7 +10,8 @@ from PyQt5.QtGui import QFont
 from business.student_service import get_next_family_ssn, get_or_create_family
 from common.utils import (
     show_warning, validate_required_fields, validate_date_format, 
-    validate_phone_length, validate_is_float, validate_ssn
+    validate_phone_length, validate_is_float, validate_ssn,
+    validate_is_not_future_date, validate_is_positive_non_zero_float
 )
 # --- END FIX ---
 from .family_search_dialog import FamilySearchDialog
@@ -242,8 +243,7 @@ class StudentFormWidget(QWidget):
     def get_data(self):
         """
         Validates all fields and returns the data for submission.
-        Returns: (data_dict, contacts, family_id, is_valid)
-        (Calls Service)
+        (Updated to include Admission Date future check and Minimum Fee check)
         """
         data = {
             "first_name": self.first_name.text().strip(),
@@ -270,28 +270,38 @@ class StudentFormWidget(QWidget):
             show_warning(self, "Validation Error", error_message)
             return None, None, None, False
 
-        # --- Date and Fee Validations ---
+        # --- Date and Fee Validations (UPDATED) ---
+        
+        # 1.1. Validate DOB format
         is_valid_dob, dob_msg = validate_date_format(data['dob'])
         if not is_valid_dob:
             show_warning(self, "Invalid Date", f"Date of Birth: {dob_msg}")
             return None, None, None, False
-            
-        is_valid_adm, adm_msg = validate_date_format(data['date_of_admission'])
-        if not is_valid_adm:
-            show_warning(self, "Invalid Date", f"Date of Admission: {adm_msg}")
+        
+        # 1.2. Validate Admission Date format and rule: MUST NOT BE FUTURE
+        is_valid_adm_format, adm_format_msg = validate_date_format(data['date_of_admission'])
+        if not is_valid_adm_format:
+            show_warning(self, "Invalid Date", f"Date of Admission: {adm_format_msg}")
             return None, None, None, False
-            
-        is_valid_mon, mon_msg = validate_is_float(data['monthly_fee'])
+
+        is_valid_adm_future, adm_future_msg = validate_is_not_future_date(data['date_of_admission'])
+        if not is_valid_adm_future:
+            show_warning(self, "Invalid Date", f"Date of Admission: {adm_future_msg}")
+            return None, None, None, False
+
+        # 1.3. Validate Minimum Monthly Fee (> 0)
+        is_valid_mon, mon_msg = validate_is_positive_non_zero_float(data['monthly_fee'])
         if not is_valid_mon:
             show_warning(self, "Invalid Fee", f"Monthly Fee: {mon_msg}")
             return None, None, None, False
             
+        # 1.4. Validate Annual Fund (Can be 0, so use original is_float)
         is_valid_ann, ann_msg = validate_is_float(data['annual_fund'])
         if not is_valid_ann:
             show_warning(self, "Invalid Fund", f"Annual Fund: {ann_msg}")
             return None, None, None, False
             
-        # --- Family ID Logic (Calls Service) ---
+        # --- Family ID Logic ---
         final_family_id = None
         if self.radio_create_new.isChecked():
             new_ssn = self.new_family_ssn_label.text()
@@ -339,7 +349,8 @@ class StudentFormWidget(QWidget):
         return data, contacts, final_family_id, True
 
     def populate_data(self, student_data):
-        """Fills the form with existing student data. (Pulls data from Service/UI)"""
+        # FIX: The missing 'clear_fields' definition was here. 
+        # The corrected method body relies on 'clear_fields' being defined below.
         self.clear_fields()
         
         self.first_name.setText(student_data.get('first_name', ''))
@@ -399,6 +410,8 @@ class StudentFormWidget(QWidget):
         self.contact_rows.clear()
         
         try:
+            # Important: Disconnect the chain before calling add_contact_row, 
+            # otherwise the chain might be corrupted if the old connection was the last item.
             self.student_class.returnPressed.disconnect()
         except TypeError:
             pass 

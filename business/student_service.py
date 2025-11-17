@@ -4,7 +4,8 @@ import re
 from dal.student_dal import (
     dal_get_or_create_family, dal_get_next_family_ssn, dal_search_families,
     dal_add_student_transaction, dal_search_students, dal_get_student_contacts,
-    dal_check_student_exists, dal_get_student_details_by_id, dal_update_student_transaction
+    dal_check_student_exists, dal_get_student_details_by_id, dal_update_student_transaction,
+    dal_check_student_uniqueness
 )
 from business.due_service import check_if_monthly_fee_was_run
 import logging
@@ -59,12 +60,32 @@ def add_student(first_name, middle_name, last_name, father_name, mother_name,
                 dob, address, gender, contacts, date_of_admission, monthly_fee,
                 annual_fund, student_class, family_id): 
     """
-    Service method to handle student addition, validation, and fee confirmation logic.
+    Service method to handle student addition, validation (including new business rules), and fee confirmation logic.
     """
+    # Import validation utilities here to avoid circular dependency issues
+    from common.utils import validate_min_age_at_event
+
+    # 1. Apply Business Rule: Uniqueness (Full Name + DOB)
+    if dal_check_student_uniqueness(first_name, middle_name, last_name, dob):
+        error_msg = "A student with this Full Name and Date of Birth already exists."
+        logging.error(f"[ERROR] add_student: {error_msg}")
+        return False, error_msg, None, None, None
+
+    # 2. Convert and validate floats
     try:
         fee_amount = float(monthly_fee)
         fund_amount = float(annual_fund)
+    except ValueError:
+        # Note: UI should prevent this, but BLL acts as final defense
+        return False, "Fee amounts must be valid numbers.", None, None, None
 
+    # 3. Apply Business Rule: Age at Admission (Min 3 years)
+    is_valid_age, age_msg = validate_min_age_at_event(dob, date_of_admission, 3)
+    if not is_valid_age:
+        logging.error(f"[ERROR] add_student: {age_msg}")
+        return False, age_msg, None, None, None
+        
+    try:
         # Prepare DAL data structures
         person_data = (father_name, mother_name, dob, address, gender)
         fullname_data = (first_name, middle_name, last_name)
@@ -174,8 +195,16 @@ def get_student_details_by_id(student_id):
 
 def update_student(student_id, person_id, data, contacts, family_id):
     """
-    Service method: Orchestrates the update transaction.
+    Service method: Orchestrates the update transaction, including age validation.
     """
+    from common.utils import validate_min_age_at_event
+    
+    # Apply Business Rule: Age at Admission (Min 3 years)
+    is_valid_age, age_msg = validate_min_age_at_event(data['dob'], data['date_of_admission'], 3)
+    if not is_valid_age:
+        logging.error(f"[ERROR] update_student: {age_msg}")
+        return False, age_msg
+
     try:
         dal_update_student_transaction(student_id, person_id, data, contacts, family_id)
         return True, "Success"

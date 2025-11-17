@@ -9,7 +9,7 @@ from datetime import datetime
 from .student_search_dialog import StudentSearchDialog
 # --- FIX: Update imports to Service/Common layers ---
 from business.due_service import get_unpaid_dues_for_student, make_payment
-from common.utils import show_warning
+from common.utils import show_warning, validate_is_positive_float # <-- NEW IMPORT
 # --- END FIX ---
 
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
@@ -151,7 +151,7 @@ class MakePaymentWidget(QWidget):
         self.payment_group.setEnabled(True)
 
     def handle_submit_payment(self):
-        """Validates and submits the payment. (Calls Service Layer)"""
+        """Validates and submits the payment. (Applies NO OVERPAYMENT Rule)"""
         amount_str = self.amount_to_pay_input.text().strip()
         payment_mode = self.payment_mode_combo.currentText()
         payment_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -162,28 +162,36 @@ class MakePaymentWidget(QWidget):
         if not self.selected_pending_due_id:
             show_warning(self, "Error", "Please select a due from the table.")
             return
+
+        # 1. Validate amount is a positive number (using new common utility)
+        is_valid_float, float_msg = validate_is_positive_float(amount_str)
+        if not is_valid_float:
+            show_warning(self, "Error", f"Payment amount: {float_msg}")
+            return
+
         try:
             amount_to_pay = float(amount_str)
             if amount_to_pay <= 0:
                 show_warning(self, "Error", "Payment amount must be greater than zero.")
                 return
+            
+            # --- BUSINESS RULE: NO OVERPAYMENT ALLOWED ---
             if amount_to_pay > self.selected_amount_remaining:
-                reply = QMessageBox.question(self, "Confirm Overpayment",
-                    f"The amount {amount_to_pay:.2f} is more than the remaining {self.selected_amount_remaining:.2f}.\n"
-                    "This is usually for pre-payment. Do you want to continue?",
-                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                if reply == QMessageBox.No:
-                    return
+                show_warning(self, "Validation Error", 
+                             f"Payment amount ({amount_to_pay:.2f}) cannot exceed the remaining due amount ({self.selected_amount_remaining:.2f}).")
+                return
+
         except ValueError:
+            # Should not happen if validate_is_positive_float is correct
             show_warning(self, "Error", "Payment amount must be a valid number.")
             return
             
-        # --- Submit to Database ---
+        # --- Submit to Database (Calls Service Layer) ---
         success, message, new_payment_id = make_payment(
             self.selected_pending_due_id,
             amount_to_pay,
             payment_mode,
-            payment_timestamp, # Pass the generated timestamp
+            payment_timestamp, 
             self.received_by_user
         )
         
@@ -194,7 +202,7 @@ class MakePaymentWidget(QWidget):
                 "receipt_id": new_payment_id,
                 "student_name": self.student_name_label.text(),
                 "student_id": self.student_id_label.text(),
-                "payment_timestamp": payment_timestamp, # Pass the generated timestamp
+                "payment_timestamp": payment_timestamp,
                 "amount_paid": amount_to_pay,
                 "payment_mode": payment_mode,
                 "due_type": due_type,

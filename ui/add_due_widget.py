@@ -1,12 +1,19 @@
 # SMS/ui/add_due_widget.py
 from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QDialogButtonBox,
+    QLineEdit, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
+)
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout,
     QMessageBox, QHBoxLayout, QDialog
 )
 from PyQt5.QtCore import Qt, QDate
 # --- FIX: Update imports to Service/Common layers ---
 from business.due_service import add_manual_due
-from common.utils import show_warning, validate_required_fields, validate_date_format, validate_is_float
+from common.utils import (
+    show_warning, validate_required_fields, validate_date_format, validate_is_float,
+    validate_is_not_future_date # <-- NEW IMPORT
+)
 from datetime import datetime
 from .student_search_dialog import StudentSearchDialog
 from business.student_service import check_student_exists # Service Layer
@@ -118,13 +125,18 @@ class AddDueWidget(QWidget):
             return
         amount = float(data['amount'])
 
-        # 4. Validate Date
-        is_valid, error_msg = validate_date_format(data['due_date'])
-        if not is_valid:
+        # 4. Validate Date & Apply Business Rule: Due Date Must Not Be Past
+        is_valid_format, error_msg = validate_date_format(data['due_date'])
+        if not is_valid_format:
             show_warning(self, "Validation Error", f"Due Date: {error_msg}")
             return
+
+        is_valid_future, future_msg = validate_is_not_future_date(data['due_date'])
+        if not is_valid_future:
+            show_warning(self, "Validation Error", f"Due Date: {future_msg}")
+            return
             
-        # 5. Add to database (Call Service Layer)
+        # 5. Add to database
         try:
             success = add_manual_due(
                 self.selected_student_id, 

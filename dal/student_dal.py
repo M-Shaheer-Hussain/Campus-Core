@@ -48,6 +48,30 @@ def dal_search_families(query, params):
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
+        
+# --- NEW DAL FUNCTION: Uniqueness Check ---
+def dal_check_student_uniqueness(first_name, middle_name, last_name, dob):
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        # Check for any existing student with the same full name and DOB
+        cursor.execute("""
+            SELECT 1 
+            FROM student s
+            JOIN fullname f ON s.person_id = f.person_id
+            JOIN person p ON s.person_id = p.id
+            WHERE 
+                f.first_name = ? AND
+                f.last_name = ? AND
+                p.dob = ? AND
+                (f.middle_name = ? OR (f.middle_name IS NULL AND ? IS NULL))
+            LIMIT 1
+        """, (first_name, last_name, dob, middle_name, middle_name))
+        
+        return cursor.fetchone() is not None # True if a match is found
+    finally:
+        conn.close()
+# --- END NEW DAL FUNCTION ---
 
 def dal_add_student_transaction(person_data, fullname_data, contacts, student_data, family_id):
     conn = connect_db()
