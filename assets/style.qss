@@ -1,139 +1,55 @@
 /* File: assets/style.qss */
 
-/* Global */
+/* -------------------------------------- */
+/* --- GLOBAL / RECEPTIONIST DEFAULT --- */
+/* -------------------------------------- */
+
 QWidget {
-    background-color: #f9fafc;
-    color: #333;
-    font-family: "Segoe UI";
+    /* Vibrant gradient background */
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                stop:0 #ffecd2, stop:1 #fcb69f);
+    color: #1a1a2e;
+    font-family: "Segoe UI", "Arial";
     font-size: 14px;
 }
 
 /* Title label */
 #titleLabel {
-    color: #2c3e50;
+    color: #ff6b6b;
+    font-size: 28px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
 }
 
 /* Buttons */
 QPushButton {
-    border-radius: 8px;
-    padding: 10px 20px;
+    border-radius: 12px;
+    padding: 12px 24px;
     font-weight: bold;
+    border: 2px solid transparent;
 }
 
 #primaryButton {
-    background-color: #3498db;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #667eea, stop:1 #764ba2);
     color: white;
+    border: 2px solid #764ba2;
 }
 
 #primaryButton:hover {
-    background-color: #2980b9;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #764ba2, stop:1 #667eea);
+    transform: scale(1.05);
 }
 
 #secondaryButton {
-    background-color: #ecf0f1;
-    color: #2c3e50;
-    border: 1px solid #bdc3c7;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #f093fb, stop:1 #f5576c);
+    color: white;
+    border: 2px solid #f5576c;
 }
 
 #secondaryButton:hover {
-    background-color: #dfe6e9;
-}
-
-/* --- Dashboard Specific Styles --- */
-/* Sidebar Frame Styling (to match the general app look) */
-#sidebarFrame {
-    background-color: #ecf0f1; /* Light background for sidebar */
-    border-right: 1px solid #bdc3c7;
-}
-
-/* Sidebar Buttons - Apply link/tab look for future functionalities */
-#sidebarButton {
-    background-color: #ecf0f1; /* Match sidebar background initially */
-    color: #2c3e50;
-    border: none;
-    text-align: left;
-    padding: 10px 15px;
-    border-radius: 0px; /* Make them look like selectable list items */
-    font-weight: normal;
-}
-
-#sidebarButton:hover {
-    background-color: #bdc3c7; /* Subtle hover effect */
-    font-weight: bold;
-}
-
-/* Content Area */
-#contentArea {
-    background-color: #f9fafc;
-}
-
-/* Header Label in Content Area */
-#headerLabel {
-    font-size: 16px;
-    color: #34495e;
-    padding: 10px;
-    border-bottom: 1px solid #bdc3c7;
-}
-
-/* --- Table Widget Styles --- */
-QTableWidget {
-    border: 1px solid #bdc3c7;
-    gridline-color: #dfe6e9;
-    background-color: white;
-    font-size: 13px;
-    border-radius: 8px;
-}
-
-/* Table Header */
-QHeaderView::section {
-    background-color: #ecf0f1;
-    padding: 8px;
-    border: none;
-    border-bottom: 1px solid #bdc3c7;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-/* Table Items */
-QTableWidget::item {
-    padding: 8px;
-    border-bottom: 1px solid #dfe6e9; /* Lighter grid line */
-}
-
-/* Table Row Selection Style */
-QTableWidget::item:selected {
-    background-color: #3498db;
-    color: white;
-}
-
-/* --- NEW: Tree Widget Styles --- */
-QTreeWidget {
-    border: 1px solid #bdc3c7;
-    background-color: white;
-    font-size: 13px;
-    border-radius: 8px;
-    alternate-background-color: #fdfdfd; /* For alternating rows */
-}
-
-/* Tree Widget Items */
-QTreeWidget::item {
-    padding: 8px;
-    border-bottom: 1px solid #dfe6e9;
-    color: #333;
-}
-
-/* Tree Widget Selected Item */
-QTreeWidget::item:selected {
-    background-color: #3498db;
-    color: white;
-}
-
-/* Style for the expand/collapse arrow */
-QTreeWidget::branch {
-    /* We'll use the default system arrows, but can style them here */
-    background-color: white;
-}
-
-QTreeWidget::branch:selected {
-    background-color: #3498db;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #f5576c, stop:1 #f093fb);
 }

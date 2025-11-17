@@ -9,6 +9,8 @@ from PyQt5.QtGui import QFont
 from ui.signup_window import SignupWindow
 from ui.receptionist_dashboard import ReceptionistDashboard
 from ui.login_window import LoginWindow 
+# --- NEW IMPORT: Admin Dashboard ---
+from ui.admin_dashboard import AdminDashboard
 # --- FIX: Update imports ---
 from dal.db_init import initialize_db
 from business.due_service import add_monthly_fees_for_all_students # Script logic now in Service
@@ -42,7 +44,6 @@ class WelcomeWindow(QWidget):
         add_monthly_fees_for_all_students()
 
     def init_ui(self):
-        # ... (rest of the file is unchanged) ...
         # Title
         title = QLabel("Welcome to School Management System")
         title.setAlignment(Qt.AlignCenter)
@@ -79,7 +80,6 @@ class WelcomeWindow(QWidget):
         self.btn_login_admin.clicked.connect(lambda: self.open_login_window("Admin"))
         self.btn_login_recep.clicked.connect(lambda: self.open_login_window("Receptionist"))
 
-    # ... (rest of the file is unchanged) ...
     def open_signup_window(self):
         if self.signup_window is None:
             self.signup_window = SignupWindow(self.show)
@@ -93,8 +93,8 @@ class WelcomeWindow(QWidget):
 
     def open_dashboard(self, role, username):
         if role == "Admin":
-            QMessageBox.information(self, "Admin Dashboard", f"Welcome Admin {username}!")
-            self.show()
+            self.dashboard_window = AdminDashboard(username, self.show)
         else:
             self.dashboard_window = ReceptionistDashboard(username, self.show)
-            self.dashboard_window.show()
+            
+        self.dashboard_window.show()

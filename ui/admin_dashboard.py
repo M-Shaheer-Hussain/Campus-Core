@@ -1,7 +1,7 @@
 # SMS/ui/admin_dashboard.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-    QFrame, QButtonGroup, QApplication, QStyle
+    QFrame, QButtonGroup, QApplication, QStyle, QMessageBox 
 )
 from PyQt5.QtCore import Qt
 from ui.add_student_widget import AddStudentWidget
@@ -12,11 +12,14 @@ from ui.make_payment_widget import MakePaymentWidget
 from ui.payment_history_widget import PaymentHistoryWidget
 
 class AdminDashboard(QWidget):
+    """
+    Admin Dashboard: Uses the same core functional widgets as the Receptionist 
+    but has a distinct UI structure and styling for clarity and privilege separation.
+    """
     def __init__(self, username, go_back_callback=None):
         super().__init__()
         self.username = username
         self.go_back_callback = go_back_callback
-        # --- CHANGE: Window Title for Admin ---
         self.setWindowTitle(f"Admin Dashboard - {username}")
         
         self.setFixedSize(1000, 600)
@@ -34,14 +37,16 @@ class AdminDashboard(QWidget):
         self.logout_icon = style.standardIcon(QStyle.SP_DialogCancelButton)
 
         self.init_ui()
-        # --- Default to "Search Student" on load ---
         self.show_search_student()
         self.btn_search_student.setChecked(True)
 
     def init_ui(self):
         main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0) # Use full space
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+        
+        # --- CRITICAL FOR STYLING: Set unique object name for CSS targeting ---
+        self.setObjectName("AdminDashboardFrame") 
         self.setLayout(main_layout)
 
         # Sidebar
@@ -53,7 +58,7 @@ class AdminDashboard(QWidget):
         self.sidebar_button_group = QButtonGroup(self)
         self.sidebar_button_group.setExclusive(True)
 
-        # --- Create buttons with Icons ---
+        # --- Reused Buttons (Functional Widgets Only) ---
         self.btn_add_student = QPushButton(" Add Student")
         self.btn_add_student.setIcon(self.add_icon)
         
@@ -71,7 +76,7 @@ class AdminDashboard(QWidget):
         
         self.btn_payment_history = QPushButton(" Payment History")
         self.btn_payment_history.setIcon(self.history_icon)
-        
+
         self.btn_logout = QPushButton(" Logout")
         self.btn_logout.setIcon(self.logout_icon)
         
@@ -83,7 +88,7 @@ class AdminDashboard(QWidget):
         sidebar_layout = QVBoxLayout(sidebar)
         for button in buttons:
             button.setObjectName("sidebarButton")
-            button.setCheckable(True) # Make it toggleable
+            button.setCheckable(True)
             self.sidebar_button_group.addButton(button)
             sidebar_layout.addWidget(button)
 
@@ -96,7 +101,7 @@ class AdminDashboard(QWidget):
         self.content_area = QFrame()
         self.content_layout = QVBoxLayout(self.content_area)
         self.content_area.setObjectName("contentArea")
-        self.content_layout.setContentsMargins(0, 0, 0, 0) # No margins
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
 
         header = QLabel(f"Welcome, {self.username}")
         header.setAlignment(Qt.AlignRight)
@@ -104,16 +109,15 @@ class AdminDashboard(QWidget):
 
         self.content_layout.addWidget(header)
         
-        # This is where the widgets will be added
         self.content_stack = QFrame()
         self.content_stack_layout = QVBoxLayout(self.content_stack)
-        self.content_stack_layout.setContentsMargins(20, 10, 20, 10) # Add padding
+        self.content_stack_layout.setContentsMargins(20, 10, 20, 10)
         self.content_layout.addWidget(self.content_stack, 1)
 
         main_layout.addWidget(sidebar)
         main_layout.addWidget(self.content_area, 1)
 
-        # Connect actions
+        # Connect actions (reusable widgets)
         self.btn_add_student.clicked.connect(self.show_add_student)
         self.btn_update_student.clicked.connect(self.show_update_student)
         self.btn_search_student.clicked.connect(self.show_search_student)
