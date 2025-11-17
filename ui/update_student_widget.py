@@ -1,9 +1,11 @@
 # SMS/ui/update_student_widget.py
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QMessageBox, QGroupBox, QLabel
+    QWidget, QVBoxLayout, QPushButton, QMessageBox, QGroupBox, QLabel,
+    QDialog, QFormLayout # Added QDialog, QFormLayout
 )
 from .add_student_form import StudentFormWidget
-from .search_student_widget import SearchStudentWidget
+# REMOVED: from .search_student_widget import SearchStudentWidget
+from .student_search_dialog import StudentSearchDialog # Added StudentSearchDialog
 # --- FIX: Update imports to Service/Common layers ---
 from business.student_service import get_student_details_by_id, update_student
 from common.utils import show_warning
@@ -22,12 +24,21 @@ class UpdateStudentWidget(QWidget):
         
         main_layout = QVBoxLayout(self)
         
-        # --- 1. Search Group ---
+        # --- 1. Search Group (Modified to use dialog) ---
         search_group = QGroupBox("1. Find Student to Update")
-        search_layout = QVBoxLayout()
-        self.search_widget = SearchStudentWidget(enable_double_click=False)
-        self.search_widget.results_tree.itemSelectionChanged.connect(self.on_student_selected)
-        search_layout.addWidget(self.search_widget)
+        search_layout = QFormLayout()
+        
+        self.student_id_label = QLabel("N/A")
+        self.student_name_label = QLabel("N/A")
+        
+        self.search_student_btn = QPushButton("Search for Student")
+        self.search_student_btn.setObjectName("secondaryButton")
+        self.search_student_btn.clicked.connect(self.open_student_search)
+        
+        search_layout.addRow("Student ID:", self.student_id_label)
+        search_layout.addRow("Student Name:", self.student_name_label)
+        search_layout.addRow(self.search_student_btn)
+        
         search_group.setLayout(search_layout)
         
         # --- 2. Form Group ---
@@ -49,21 +60,36 @@ class UpdateStudentWidget(QWidget):
         # Start with form disabled
         self.form_group.setEnabled(False)
 
-    def on_student_selected(self):
-        """Called when a student is selected in the search widget. (Calls Service)"""
-        student_id, _ = self.search_widget.get_selected_student()
+    # REMOVED: on_student_selected method and logic related to self.search_widget.
+    
+    def open_student_search(self):
+        """Opens the student search dialog and retrieves the selected student."""
+        dialog = StudentSearchDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            student_id, student_name = dialog.get_selected_student()
+            if student_id:
+                self.student_id_label.setText(str(student_id))
+                self.student_name_label.setText(student_name)
+                self.load_student_for_update(student_id)
+
+    def load_student_for_update(self, student_id):
+        """Fetches and loads student data into the form."""
         
-        if not student_id:
-            self.form_group.setEnabled(False)
-            self.current_student_id = None
-            self.current_person_id = None
-            return
-            
+        # Clear previous connection if it exists (for robustness)
+        try:
+            self.form_widget.contact_rows[-1].last_input().returnPressed.disconnect()
+            self.form_widget.add_contact_btn.clicked.disconnect()
+        except (AttributeError, IndexError, TypeError):
+             pass 
+
         try:
             # Fetch all details for this student
             student_data = get_student_details_by_id(student_id)
             if not student_data:
                 show_warning(self, "Error", "Could not fetch student details.")
+                self.form_group.setEnabled(False)
+                self.current_student_id = None
+                self.current_person_id = None
                 return
                 
             # Populate the form with this data
@@ -73,7 +99,7 @@ class UpdateStudentWidget(QWidget):
             self.current_student_id = student_data['student_id']
             self.current_person_id = student_data['person_id']
             
-            # Enable the form
+            # Enable the form and reset connections
             self.form_group.setEnabled(True)
             self.form_widget.contact_rows[-1].last_input().returnPressed.connect(self.btn_update.click)
             self.form_widget.add_contact_btn.clicked.connect(self.on_add_contact_row)
@@ -81,6 +107,8 @@ class UpdateStudentWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load student data: {e}")
             self.form_group.setEnabled(False)
+            self.current_student_id = None
+            self.current_person_id = None
 
     def on_add_contact_row(self):
         """When a new contact row is added, chain its 'Enter' to the update button."""
@@ -115,7 +143,9 @@ class UpdateStudentWidget(QWidget):
             # Clear and disable everything
             self.form_widget.clear_fields()
             self.form_group.setEnabled(False)
-            self.search_widget.results_tree.clearSelection()
+            # Cannot clear selection as search_widget is gone, but we can clear the labels
+            self.student_id_label.setText("N/A")
+            self.student_name_label.setText("N/A")
             self.current_student_id = None
             self.current_person_id = None
         else:

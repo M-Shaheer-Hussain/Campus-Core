@@ -2,14 +2,17 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTreeWidget, 
     QTreeWidgetItem, QAbstractItemView, QGroupBox, QFormLayout, QDialog,
-    QHeaderView
+    QHeaderView, QMessageBox # Added QMessageBox
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QPainter, QColor # Added QPainter, QColor
+from PyQt5.QtPrintSupport import QPrintDialog, QPrinter # Added QPrintDialog, QPrinter
 from .student_search_dialog import StudentSearchDialog
 # --- FIX: Update imports to Service Layer ---
 from business.due_service import get_all_student_dues_with_summary, get_payments_for_due
 # --- END FIX ---
+from common.utils import show_warning # Added show_warning
+from datetime import datetime # Added datetime for slip generation timestamp
 
 class PaymentHistoryWidget(QWidget):
     """
@@ -61,13 +64,21 @@ class PaymentHistoryWidget(QWidget):
         # --- FIX: Set column 6 (the empty one) to stretch ---
         self.history_tree.header().setSectionResizeMode(6, QHeaderView.Stretch)
         
+        # New: Print Button
+        self.btn_print_slip = QPushButton("Generate Payment Slip/Challan")
+        self.btn_print_slip.setObjectName("secondaryButton")
+        self.btn_print_slip.clicked.connect(self.prompt_to_print_slip)
+        
         history_layout.addWidget(self.history_tree)
+        history_layout.addWidget(self.btn_print_slip) # Add the button
         history_group.setLayout(history_layout)
         main_layout.addWidget(history_group, 1) # Give tree more space
         
         self.history_tree.itemExpanded.connect(self.on_due_expand)
+        self.history_tree.itemSelectionChanged.connect(self.on_due_selection_changed) # New selection signal
         
         history_group.setEnabled(False)
+        self.btn_print_slip.setEnabled(False) # Disable by default
 
     def open_student_search(self):
         """Opens the search dialog and retrieves the selected student."""
@@ -184,3 +195,159 @@ class PaymentHistoryWidget(QWidget):
             child.setText(3, f"{payment['amount_paid']:.2f}")
             child.setText(4, payment['payment_mode'])
             child.setText(5, payment['received_by_user'])
+
+    def on_due_selection_changed(self):
+        """Enables the print button only if a top-level due item is selected."""
+        selected_items = self.history_tree.selectedItems()
+        if not selected_items:
+            self.btn_print_slip.setEnabled(False)
+            return
+            
+        item = selected_items[0]
+        # Only enable if a top-level item (due) is selected (i.e., it has the DUE_ID_ROLE and no parent)
+        due_id = item.data(0, self.DUE_ID_ROLE)
+        
+        if due_id and item.parent() is None:
+             self.btn_print_slip.setEnabled(True)
+        else:
+             self.btn_print_slip.setEnabled(False)
+
+    def prompt_to_print_slip(self):
+        selected_items = self.history_tree.selectedItems()
+        if not selected_items:
+            show_warning(self, "No Selection", "Please select a Due from the history list.")
+            return
+
+        item = selected_items[0]
+        
+        # Retrieve necessary data from the selected item's text fields
+        due_id = item.data(0, self.DUE_ID_ROLE)
+        due_type = item.text(0)
+        amount_due = item.text(3)
+        amount_remaining = item.text(5)
+        due_date = item.text(1)
+        
+        # We need the student info
+        student_id = self.selected_student_id
+        student_name = self.selected_student_name
+        
+        if not due_id:
+            show_warning(self, "Error", "Could not retrieve due ID for the selected item.")
+            return
+            
+        slip_details = {
+            "due_id": due_id,
+            "student_name": student_name,
+            "student_id": student_id,
+            "date_generated": datetime.now().strftime("%Y-%m-%d"),
+            "due_type": due_type,
+            "amount_due": amount_due,
+            "amount_remaining": amount_remaining,
+            "due_date": due_date
+        }
+
+        reply = QMessageBox.question(self, "Print Slip/Challan",
+            f"Do you want to print a payment slip/challan for '{due_type}' (ID: {due_id})?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            
+        if reply == QMessageBox.Yes:
+            self.print_slip(slip_details)
+            
+    def print_slip(self, details):
+        """
+        Opens a QPrintDialog and prints a formatted payment slip/challan.
+        """
+        printer = QPrinter(QPrinter.HighResolution)
+        dialog = QPrintDialog(printer, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            painter = QPainter()
+            painter.begin(printer)
+            
+            title_font = QFont("Arial", 14, QFont.Bold)
+            header_font = QFont("Arial", 10, QFont.Bold)
+            body_font = QFont("Arial", 10)
+            
+            y_pos = 1000 
+            
+            # Title
+            painter.setFont(title_font)
+            painter.drawText(1000, y_pos, "School Management System")
+            y_pos += 300
+            
+            painter.setFont(title_font)
+            painter.drawText(1000, y_pos, "OFFICIAL PAYMENT SLIP / CHALLAN")
+            y_pos += 200
+            
+            painter.setPen(QColor(Qt.black))
+            painter.drawLine(1000, y_pos, 7000, y_pos)
+            y_pos += 200
+            
+            # Due ID and Date Generated
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Due ID:")
+            painter.setFont(body_font)
+            painter.drawText(3000, y_pos, str(details['due_id']))
+            y_pos += 200
+            
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Date Generated:")
+            painter.setFont(body_font)
+            painter.drawText(3000, y_pos, details['date_generated'])
+            y_pos += 200
+            
+            painter.drawLine(1000, y_pos, 7000, y_pos)
+            y_pos += 200
+            
+            # Student Info
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Student ID:")
+            painter.setFont(body_font)
+            painter.drawText(3000, y_pos, str(details['student_id']))
+            y_pos += 200
+            
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Student Name:")
+            painter.setFont(body_font)
+            painter.drawText(3000, y_pos, details['student_name'])
+            y_pos += 200
+            
+            painter.drawLine(1000, y_pos, 7000, y_pos)
+            y_pos += 300 
+
+            # Payment Details
+            painter.setFont(title_font)
+            painter.drawText(1000, y_pos, "AMOUNT DUE")
+            y_pos += 200
+            
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Due Type:")
+            painter.setFont(body_font)
+            painter.drawText(3000, y_pos, details['due_type'])
+            y_pos += 200
+            
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Due Date:")
+            painter.setFont(body_font)
+            painter.drawText(3000, y_pos, details['due_date'])
+            y_pos += 300
+            
+            # Key Amounts
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Total Amount Payable:")
+            painter.setFont(title_font) 
+            painter.drawText(4000, y_pos, f"Rs. {details['amount_due']}")
+            y_pos += 200
+            
+            painter.setFont(header_font)
+            painter.drawText(1000, y_pos, "Amount Remaining:")
+            painter.setFont(title_font)
+            painter.drawText(4000, y_pos, f"Rs. {details['amount_remaining']}")
+            y_pos += 400
+            
+            painter.setFont(body_font)
+            painter.drawText(1000, y_pos, "Please pay the remaining amount by the due date.")
+            
+            painter.end()
+        else:
+            show_warning(self, "Print Cancelled", "The slip was not printed.")
