@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QMessageBox,
     QFormLayout, QGroupBox, QComboBox, QDialog,
-    QHeaderView
+    QHeaderView 
 )
 from PyQt5.QtCore import Qt
 from datetime import datetime
@@ -107,8 +107,10 @@ class MakePaymentWidget(QWidget):
         self.payment_group.setEnabled(False)
 
     def open_student_search(self):
-        """Opens the search dialog and retrieves the selected student."""
-        dialog = StudentSearchDialog(self)
+        """Opens the search dialog and retrieves the selected student, 
+           allowing selection of inactive students for paying dues."""
+        # Pass True to allow selection of inactive students (left students)
+        dialog = StudentSearchDialog(self, allow_inactive_selection=True)
         if dialog.exec_() == QDialog.Accepted:
             student_id, student_name = dialog.get_selected_student()
             if student_id:
@@ -123,6 +125,7 @@ class MakePaymentWidget(QWidget):
         if not self.selected_student_id:
             return
             
+        # This service fetches dues regardless of student's active status, which is correct
         dues = get_unpaid_dues_for_student(self.selected_student_id)
         self.dues_table.setRowCount(0) # Clear table
         
@@ -144,7 +147,6 @@ class MakePaymentWidget(QWidget):
             self.dues_table.setItem(row, 4, QTableWidgetItem(f"{due['amount_remaining']:.2f}"))
             self.dues_table.setItem(row, 5, QTableWidgetItem(due['due_date']))
         
-        # REMOVED: self.dues_table.resizeColumnsToContents() to fix the shrinking issue.
         # The stretching policy set in init_ui will now correctly fill the space.
 
     def on_due_selected(self, item):

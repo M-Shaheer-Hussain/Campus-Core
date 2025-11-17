@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QDate
 from business.due_service import add_manual_due
 from common.utils import (
     show_warning, validate_required_fields, validate_date_format, validate_is_float,
-    validate_is_not_future_date # <-- NEW IMPORT
+    validate_is_not_future_date 
 )
 from datetime import datetime
 from .student_search_dialog import StudentSearchDialog
@@ -88,9 +88,10 @@ class AddDueWidget(QWidget):
 
     def open_student_search(self):
         """
-        Opens the reusable student search dialog.
+        Opens the reusable student search dialog, allowing selection of inactive students.
         """
-        dialog = StudentSearchDialog(self)
+        # Pass True to allow selection of inactive students (left students)
+        dialog = StudentSearchDialog(self, allow_inactive_selection=True)
         if dialog.exec_() == QDialog.Accepted: # If the user clicked "OK"
             student_id, student_name = dialog.get_selected_student()
             if student_id:

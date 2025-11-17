@@ -1,6 +1,6 @@
 # SMS/ui/student_search_dialog.py
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QDialogButtonBox
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QDialogButtonBox, QCheckBox
 )
 from .search_student_widget import SearchStudentWidget # Import the widget
 
@@ -9,7 +9,8 @@ class StudentSearchDialog(QDialog):
     A reusable dialog window that contains the SearchStudentWidget
     and returns a selected student.
     """
-    def __init__(self, parent=None):
+    # Added allow_inactive_selection to control visibility of the "Include Inactive" checkbox
+    def __init__(self, parent=None, allow_inactive_selection=False): 
         super().__init__(parent)
         self.setWindowTitle("Search and Select Student")
         self.setMinimumSize(1000, 600) # Set a good default size
@@ -23,6 +24,11 @@ class StudentSearchDialog(QDialog):
         # open *another* details window from here.
         self.search_widget = SearchStudentWidget(enable_double_click=False)
         main_layout.addWidget(self.search_widget)
+        
+        # --- Conditional Activation for Inactive Search (FIXED) ---
+        # If selection of inactive students is allowed (e.g., for payments), 
+        # enable the checkbox on the underlying widget.
+        self.search_widget.checkbox_include_inactive.setEnabled(allow_inactive_selection)
         
         # --- Buttons ---
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)

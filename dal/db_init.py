@@ -58,20 +58,35 @@ def initialize_db():
         )
     ''')
 
-    # --- UPDATED: Student Table ---
+    # --- UPDATED: Student Table (Added date_of_leaving and is_active) ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS student (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             person_id INTEGER NOT NULL,
             family_id INTEGER,
             date_of_admission DATE,
+            date_of_leaving DATE, -- NEW
             monthly_fee DOUBLE,
             annual_fund DOUBLE,
             class TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1, -- NEW: 1 for active, 0 for removed
             FOREIGN KEY(person_id) REFERENCES person(id) ON DELETE CASCADE,
             FOREIGN KEY(family_id) REFERENCES family(id) ON DELETE SET NULL
         )
     ''')
+
+    # Add missing columns to existing table if they don't exist
+    try:
+        cursor.execute("SELECT date_of_leaving FROM student LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE student ADD COLUMN date_of_leaving DATE")
+    
+    try:
+        cursor.execute("SELECT is_active FROM student LIMIT 1")
+    except sqlite3.OperationalError:
+        # Default existing students to active
+        cursor.execute("ALTER TABLE student ADD COLUMN is_active INTEGER DEFAULT 1")
+
 
     # Teacher table
     cursor.execute('''

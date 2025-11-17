@@ -5,7 +5,7 @@ from dal.student_dal import (
     dal_get_or_create_family, dal_get_next_family_ssn, dal_search_families,
     dal_add_student_transaction, dal_search_students, dal_get_student_contacts,
     dal_check_student_exists, dal_get_student_details_by_id, dal_update_student_transaction,
-    dal_check_student_uniqueness
+    dal_check_student_uniqueness, dal_remove_student
 )
 from business.due_service import check_if_monthly_fee_was_run
 import logging
@@ -65,7 +65,7 @@ def add_student(first_name, middle_name, last_name, father_name, mother_name,
     # Import validation utilities here to avoid circular dependency issues
     from common.utils import validate_min_age_at_event
 
-    # 1. Apply Business Rule: Uniqueness (Full Name + DOB)
+    # 1. Apply Business Rule: Uniqueness (Full Name + DOB) - Now checks only active students in DAL
     if dal_check_student_uniqueness(first_name, middle_name, last_name, dob):
         error_msg = "A student with this Full Name and Date of Birth already exists."
         logging.error(f"[ERROR] add_student: {error_msg}")
@@ -110,10 +110,11 @@ def add_student(first_name, middle_name, last_name, father_name, mother_name,
         logging.error(f"[ERROR] add_student: {e}")
         return False, str(e), None, None, None
 
-def search_students(search_term):
+def search_students(search_term, include_inactive=False):
     """
     Search for students by ID, 5-digit Family SSN, or name.
     Builds the query in the service layer, passes to DAL.
+    By default, searches only active students (is_active = 1).
     """
     query = """
         SELECT 
@@ -125,29 +126,40 @@ def search_students(search_term):
             s.monthly_fee,
             s.annual_fund,
             fam.family_SSN,
-            fam.family_name
+            fam.family_name,
+            s.is_active, 
+            s.date_of_leaving 
         FROM student s
         JOIN person p ON s.person_id = p.id
         JOIN fullname f ON f.person_id = p.id
         LEFT JOIN family fam ON s.family_id = fam.id
     """
     params = []
+    
+    # Base filter: Only include active students unless explicitly requested otherwise
+    where_clauses = []
+    if not include_inactive:
+        where_clauses.append("s.is_active = 1")
+    
     cleaned_term = re.sub(r'\D', '', search_term)
     
     if cleaned_term.isdigit() and len(cleaned_term) == 5:
-        query += " WHERE fam.family_SSN = ?"
+        where_clauses.append("fam.family_SSN = ?")
         params.append(cleaned_term)
     elif cleaned_term.isdigit():
-        query += " WHERE s.id = ?"
+        where_clauses.append("s.id = ?")
         params.append(int(cleaned_term))
     else:
         terms = search_term.split()
-        conditions = []
+        name_conditions = []
         for term in terms:
-            conditions.append("(f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ?)")
+            name_conditions.append("(f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ?)")
             params.extend([f"%{term}%", f"%{term}%", f"%{term}%"])
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
+        if name_conditions:
+            where_clauses.append("(" + " AND ".join(name_conditions) + ")")
+            
+    if where_clauses:
+        query += " WHERE " + " AND ".join(where_clauses)
             
     try:
         return dal_search_students(query, params)
@@ -166,6 +178,7 @@ def get_student_contacts(student_id):
 def check_student_exists(student_id):
     """
     Service method to check student existence by delegating to DAL.
+    NOTE: DAL now checks for ACTIVE student existence.
     """
     try:
         return dal_check_student_exists(student_id)
@@ -212,3 +225,31 @@ def update_student(student_id, person_id, data, contacts, family_id):
     except Exception as e:
         logging.error(f"[ERROR] update_student: {e}")
         return False, str(e)
+
+# --- NEW SERVICE FUNCTION ---
+def remove_student(student_id, date_of_leaving):
+    """
+    Service method to mark a student as inactive (removed) and set the leaving date.
+    """
+    # Import validation utilities here to avoid circular dependency issues
+    from common.utils import validate_is_not_future_date
+    
+    # 1. Basic validation
+    if not dal_check_student_exists(student_id):
+        return False, "Student not found or already marked as inactive."
+        
+    # 2. Apply Business Rule: Date of Leaving Must Not Be Future
+    is_valid, error_msg = validate_is_not_future_date(date_of_leaving)
+    if not is_valid:
+        logging.error(f"[ERROR] remove_student: Date of leaving is in the future: {date_of_leaving}")
+        return False, error_msg
+        
+    try:
+        if dal_remove_student(student_id, date_of_leaving):
+            return True, "Student marked as inactive successfully."
+        else:
+            return False, "Database operation failed."
+    except Exception as e:
+        logging.error(f"[ERROR] remove_student: {e}")
+        return False, str(e)
+# --- END NEW SERVICE FUNCTION ---

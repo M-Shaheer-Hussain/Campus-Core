@@ -2,7 +2,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QTreeWidget, QTreeWidgetItem, QAbstractItemView, QMessageBox, QLabel,
-    QHeaderView
+    QHeaderView, QCheckBox 
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -23,22 +23,36 @@ class SearchStudentWidget(QWidget):
         
         self.details_window = None 
         self.enable_double_click = enable_double_click
+        
+        # --- FIX: Ensure checkbox attribute exists immediately ---
+        self.checkbox_include_inactive = QCheckBox("Include Inactive (Left) Students")
+        # --- END FIX ---
+        
         self.init_ui()
         self.init_connections()
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
         
-        search_layout = QHBoxLayout()
+        search_control_layout = QHBoxLayout() # Container for search bar and checkbox
+        
+        # Search Input Group
+        search_bar_layout = QHBoxLayout()
         self.search_label = QLabel("Search by Student ID, Family SSN (5 digits), or Name:")
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("e.g., '101' or '10001' or 'John Doe'")
         self.search_btn = QPushButton("Search")
         self.search_btn.setObjectName("primaryButton")
-
-        search_layout.addWidget(self.search_label)
-        search_layout.addWidget(self.search_input, 1) 
-        search_layout.addWidget(self.search_btn)
+        
+        search_bar_layout.addWidget(self.search_label)
+        search_bar_layout.addWidget(self.search_input, 1) 
+        search_bar_layout.addWidget(self.search_btn)
+        
+        search_control_layout.addLayout(search_bar_layout, 1)
+        
+        # New Checkbox for Inactive Students (already declared in __init__)
+        self.checkbox_include_inactive.setChecked(False) # Default to active only
+        search_control_layout.addWidget(self.checkbox_include_inactive)
         
         self.results_tree = QTreeWidget()
         self.results_tree.setColumnCount(9)
@@ -52,12 +66,14 @@ class SearchStudentWidget(QWidget):
         self.results_tree.setSelectionMode(QAbstractItemView.SingleSelection)
         self.results_tree.setRootIsDecorated(False) 
         
-        main_layout.addLayout(search_layout)
+        main_layout.addLayout(search_control_layout) # Use the new combined layout
         main_layout.addWidget(self.results_tree)
 
     def init_connections(self):
         self.search_btn.clicked.connect(self.on_search)
         self.search_input.returnPressed.connect(self.on_search)
+        # Connect checkbox state change to trigger new search
+        self.checkbox_include_inactive.stateChanged.connect(self.on_search) 
         
         if self.enable_double_click:
             self.results_tree.itemDoubleClicked.connect(self.on_open_details_window) 
@@ -65,13 +81,16 @@ class SearchStudentWidget(QWidget):
     def on_search(self):
         """(Calls Service Layer)"""
         search_term = self.search_input.text().strip()
+        include_inactive = self.checkbox_include_inactive.isChecked() # Check the flag
+        
         self.results_tree.clear() 
         
         if not search_term:
             return
             
         try:
-            results = search_students(search_term)
+            # Pass the flag to the service layer
+            results = search_students(search_term, include_inactive=include_inactive) 
             self.populate_tree(results)
         except Exception as e:
             print(f"Search Error: {e}")
@@ -94,6 +113,14 @@ class SearchStudentWidget(QWidget):
             item.setText(7, f"{student_data['monthly_fee']:.2f}")
             item.setText(8, f"{student_data['annual_fund']:.2f}")
             
+            # Highlight inactive students if present
+            if student_data.get('is_active') == 0:
+                font = QFont()
+                font.setStrikeOut(True)
+                item.setText(1, f"{student_data['full_name']} (LEFT)")
+                for i in range(self.results_tree.columnCount()):
+                    item.setFont(i, font)
+
             item.setData(0, self.STUDENT_ID_ROLE, student_data['student_id'])
             item.setData(0, self.STUDENT_DATA_ROLE, student_data)
             

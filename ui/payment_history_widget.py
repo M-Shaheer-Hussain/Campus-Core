@@ -88,8 +88,10 @@ class PaymentHistoryWidget(QWidget):
         self.btn_print_slip.setEnabled(False) # Disable by default
 
     def open_student_search(self):
-        """Opens the search dialog and retrieves the selected student."""
-        dialog = StudentSearchDialog(self)
+        """Opens the search dialog and retrieves the selected student, 
+           allowing selection of inactive students."""
+        # Pass True to allow selection of inactive students (left students)
+        dialog = StudentSearchDialog(self, allow_inactive_selection=True)
         if dialog.exec_() == QDialog.Accepted:
             student_id, student_name = dialog.get_selected_student()
             if student_id:
@@ -136,10 +138,10 @@ class PaymentHistoryWidget(QWidget):
             placeholder = QTreeWidgetItem(due_item, ["Loading installments..."])
             placeholder.setDisabled(True)
 
-        # --- FIX: Resize only the columns set to ResizeToContents (1-6) based on data ---
-        for i in range(1, self.history_tree.columnCount()): 
+        # Resize all content columns based on the loaded data
+        # We only resize columns 1-6 because 0 is set to stretch.
+        for i in range(1, self.history_tree.columnCount()):
             self.history_tree.resizeColumnToContents(i)
-        # --- END FIX ---
 
     def on_due_expand(self, item):
         """Lazy-loads the installments (payments) for a due. (Calls Service)"""

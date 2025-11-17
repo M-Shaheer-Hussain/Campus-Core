@@ -54,7 +54,7 @@ def dal_check_student_uniqueness(first_name, middle_name, last_name, dob):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Check for any existing student with the same full name and DOB
+        # Check for any existing ACTIVE student with the same full name and DOB
         cursor.execute("""
             SELECT 1 
             FROM student s
@@ -64,6 +64,7 @@ def dal_check_student_uniqueness(first_name, middle_name, last_name, dob):
                 f.first_name = ? AND
                 f.last_name = ? AND
                 p.dob = ? AND
+                s.is_active = 1 AND
                 (f.middle_name = ? OR (f.middle_name IS NULL AND ? IS NULL))
             LIMIT 1
         """, (first_name, last_name, dob, middle_name, middle_name))
@@ -97,7 +98,7 @@ def dal_add_student_transaction(person_data, fullname_data, contacts, student_da
                 VALUES (?, ?, ?, ?)
             ''', (person_id, contact['type'], contact['value'], contact['label']))
 
-        # 4. Insert into student
+        # 4. Insert into student (is_active defaults to 1)
         cursor.execute('''
             INSERT INTO student (person_id, family_id, date_of_admission, monthly_fee, annual_fund, class)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -142,7 +143,8 @@ def dal_check_student_exists(student_id):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT 1 FROM student WHERE id = ? LIMIT 1", (student_id,))
+        # Check if ACTIVE student exists
+        cursor.execute("SELECT 1 FROM student WHERE id = ? AND is_active = 1 LIMIT 1", (student_id,))
         return cursor.fetchone() is not None
     finally:
         conn.close()
@@ -156,7 +158,8 @@ def dal_get_student_details_by_id(student_id):
         cursor.execute("""
             SELECT 
                 s.id as student_id, s.person_id, s.family_id,
-                s.date_of_admission, s.monthly_fee, s.annual_fund, s.class,
+                s.date_of_admission, s.date_of_leaving, s.is_active,
+                s.monthly_fee, s.annual_fund, s.class,
                 p.fathername, p.mothername, p.dob, p.address, p.gender,
                 f.first_name, f.middle_name, f.last_name,
                 fam.family_SSN, fam.family_name
@@ -197,7 +200,7 @@ def dal_update_student_transaction(student_id, person_id, data, contacts, family
             WHERE person_id = ?
         """, (data['first_name'], data['middle_name'], data['last_name'], person_id))
         
-        # 3. Update student table
+        # 3. Update student table (is_active and date_of_leaving are not touched by update)
         cursor.execute("""
             UPDATE student
             SET family_id = ?, date_of_admission = ?, monthly_fee = ?, 
@@ -225,3 +228,27 @@ def dal_update_student_transaction(student_id, person_id, data, contacts, family
         raise e
     finally:
         conn.close()
+
+# --- NEW DAL FUNCTION ---
+def dal_remove_student(student_id, date_of_leaving):
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        # Mark student as inactive (is_active = 0) and set date of leaving
+        cursor.execute("""
+            UPDATE student
+            SET is_active = 0, date_of_leaving = ?
+            WHERE id = ?
+        """, (date_of_leaving, student_id))
+        
+        # Optionally, you could also stop monthly fees here, but keeping due records
+        # allows tracking of outstanding balances for ex-students.
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+# --- END NEW DAL FUNCTION ---
