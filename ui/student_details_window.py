@@ -27,7 +27,7 @@ class StudentDetailsWindow(QWidget):
         
         # Window setup
         self.setWindowTitle(f"Details for {self.student_name} (ID: {self.student_id})")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(1100, 700)
         self.setStyleSheet(open("assets/style.qss").read())
         self.setObjectName("DetailsWindow")
 

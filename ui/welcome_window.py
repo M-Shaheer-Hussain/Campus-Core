@@ -20,7 +20,7 @@ class WelcomeWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Welcome - School Management System")
-        self.setFixedSize(600, 400)
+        self.setFixedSize(700, 500)
         self.setStyleSheet(open("assets/style.qss").read())
         
         # --- Run critical startup tasks ---

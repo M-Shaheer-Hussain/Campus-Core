@@ -15,7 +15,7 @@ class LoginWindow(QWidget):
         self.open_dashboard_callback = open_dashboard_callback
 
         self.setWindowTitle(f"{role} Login - School Management System")
-        self.setFixedSize(600, 400)
+        self.setFixedSize(700, 500)
         self.setStyleSheet(open("assets/style.qss").read())  # match existing style
 
         self.init_ui()

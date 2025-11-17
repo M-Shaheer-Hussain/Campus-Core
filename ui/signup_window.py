@@ -18,7 +18,7 @@ class SignupWindow(QWidget):
     def __init__(self, go_back_callback):
         super().__init__()
         self.setWindowTitle("Receptionist Sign-Up")
-        self.setFixedSize(500, 700)
+        self.setFixedSize(650, 750)
         self.setStyleSheet(self.load_styles())
         self.go_back_callback = go_back_callback
         self.verification_code = None

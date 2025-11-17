@@ -12,7 +12,7 @@ class StudentSearchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Search and Select Student")
-        self.setMinimumSize(700, 500) # Set a good default size
+        self.setMinimumSize(1000, 600) # Set a good default size
         self.selected_student_id = None
         self.selected_student_name = None
 

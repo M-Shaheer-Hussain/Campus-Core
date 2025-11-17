@@ -14,7 +14,7 @@ class FamilySearchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Search and Select Family")
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(700, 500)
         
         self.selected_family_id = None
         self.selected_family_ssn = None

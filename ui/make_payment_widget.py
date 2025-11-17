@@ -2,7 +2,8 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QMessageBox,
-    QFormLayout, QGroupBox, QComboBox, QDialog
+    QFormLayout, QGroupBox, QComboBox, QDialog,
+    QHeaderView # Ensure QHeaderView is imported (it is via QWidget import)
 )
 from PyQt5.QtCore import Qt
 from datetime import datetime
@@ -58,6 +59,13 @@ class MakePaymentWidget(QWidget):
         self.dues_table.setHorizontalHeaderLabels([
             "Due ID", "Due Type", "Amount Due", "Total Paid", "Amount Remaining", "Due Date"
         ])
+        
+        # --- FIX: Set all columns to stretch to fill the width ---
+        header = self.dues_table.horizontalHeader()
+        for i in range(self.dues_table.columnCount()):
+            header.setSectionResizeMode(i, QHeaderView.Stretch)
+        # --- END FIX ---
+        
         self.dues_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.dues_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.dues_table.setEditTriggers(QAbstractItemView.NoEditTriggers)

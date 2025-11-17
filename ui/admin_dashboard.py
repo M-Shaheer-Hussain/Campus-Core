@@ -22,7 +22,7 @@ class AdminDashboard(QWidget):
         self.go_back_callback = go_back_callback
         self.setWindowTitle(f"Admin Dashboard - {username}")
         
-        self.setFixedSize(1000, 600)
+        self.setFixedSize(1400, 750)
         self.setStyleSheet(open("assets/style.qss").read())
         
         # --- Get standard icons ---
