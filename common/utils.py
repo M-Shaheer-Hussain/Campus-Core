@@ -29,7 +29,7 @@ def validate_date_format(date_str, format_str="%Y-%m-%d"):
     """
     if not date_str:
         return False, "Date field cannot be empty."
-    if format_str == "%Y-%m-%d" and not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+    if format_str == "%Y-%m-%d" and not re.match(r"^\d{4}-\d{1,2}-\d{1,2}$", date_str):
         return False, "Date must be in YYYY-MM-DD format."
     try:
         datetime.strptime(date_str, format_str)

@@ -19,7 +19,7 @@ from business.due_service import add_monthly_fees_for_all_students # Script logi
 class WelcomeWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Welcome - School Management System")
+        self.setWindowTitle("Campus Core")
         self.setFixedSize(700, 500)
         self.setStyleSheet(open("assets/style.qss").read())
         
@@ -45,7 +45,7 @@ class WelcomeWindow(QWidget):
 
     def init_ui(self):
         # Title
-        title = QLabel("Welcome to School Management System")
+        title = QLabel("Welcome to Campus Core")
         title.setAlignment(Qt.AlignCenter)
         title.setFont(QFont("Segoe UI", 18, QFont.Bold))
         title.setObjectName("titleLabel")

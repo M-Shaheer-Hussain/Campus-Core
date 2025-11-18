@@ -23,7 +23,7 @@ class ContactRow(QWidget):
         self.prev_input = prev_input 
         
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["phone", "email"])
+        self.type_combo.addItems(["Phone", "Email"])
         self.value_input = QLineEdit()
         self.value_input.setPlaceholderText("Value (e.g., 03XXYYYYYYY or email@example.com)")
         self.label_input = QLineEdit()
@@ -334,7 +334,7 @@ class StudentFormWidget(QWidget):
             if not value:
                  show_warning(self, "Validation Error", f"Contact {i+1} value cannot be empty.")
                  return None, None, None, False
-            if contact_type == "phone":
+            if contact_type == "Phone":
                 has_phone = True
                 is_valid, phone_msg = validate_phone_length(value)
                 if not is_valid:
