@@ -87,7 +87,10 @@ class UpdateStudentWidget(QWidget):
             student_data = get_student_details_by_id(student_id)
             if not student_data:
                 show_warning(self, "Error", "Could not fetch student details.")
+                self.form_widget.clear_fields()
                 self.form_group.setEnabled(False)
+                self.student_id_label.setText("N/A")
+                self.student_name_label.setText("N/A")
                 self.current_student_id = None
                 self.current_person_id = None
                 return
@@ -106,7 +109,10 @@ class UpdateStudentWidget(QWidget):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load student data: {e}")
+            self.form_widget.clear_fields()
             self.form_group.setEnabled(False)
+            self.student_id_label.setText("N/A")
+            self.student_name_label.setText("N/A")
             self.current_student_id = None
             self.current_person_id = None
 

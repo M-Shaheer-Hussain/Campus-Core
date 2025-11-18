@@ -39,6 +39,17 @@ def dal_get_next_family_ssn():
     finally:
         conn.close()
 
+# --- NEW DAL FUNCTION: Check Family SSN Uniqueness ---
+def dal_check_family_ssn_exists(family_ssn):
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM family WHERE family_SSN = ?", (family_ssn,))
+        return cursor.fetchone() is not None # True if a match is found
+    finally:
+        conn.close()
+# --- END NEW DAL FUNCTION ---
+        
 def dal_search_families(query, params):
     conn = connect_db()
     conn.row_factory = sqlite3.Row

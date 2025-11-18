@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QFont
 # --- FIX: Update imports to Service/Common layers ---
-from business.student_service import get_next_family_ssn, get_or_create_family
+from business.student_service import get_next_family_ssn, get_or_create_family, check_family_ssn_exists # ADDED IMPORT
 from common.utils import (
     show_warning, validate_required_fields, validate_date_format, 
     validate_phone_length, validate_is_float, validate_ssn,
@@ -65,7 +65,8 @@ class StudentFormWidget(QWidget):
     def load_initial_data(self):
         """Fetches data needed when the form loads, like the next SSN. (Calls Service)"""
         self.next_available_ssn = get_next_family_ssn()
-        self.new_family_ssn_label.setText(self.next_available_ssn)
+        # MODIFIED: Set value on the new QLineEdit input field
+        self.new_family_ssn_input.setText(self.next_available_ssn)
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -115,11 +116,16 @@ class StudentFormWidget(QWidget):
         # Page 1: Create New Family
         new_family_widget = QWidget()
         new_family_layout = QFormLayout(new_family_widget)
-        self.new_family_ssn_label = QLabel(self.next_available_ssn)
-        self.new_family_ssn_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        
+        # MODIFIED: Changed QLabel to QLineEdit for manual SSN input
+        self.new_family_ssn_input = QLineEdit() 
+        self.new_family_ssn_input.setPlaceholderText("Enter a unique Family SSN (5 digits)")
+        
         self.new_family_name_input = QLineEdit()
         self.new_family_name_input.setPlaceholderText("e.g., The Khan Family")
-        new_family_layout.addRow("New Family SSN:", self.new_family_ssn_label)
+        
+        # MODIFIED: Added new SSN input field
+        new_family_layout.addRow("New Family SSN:", self.new_family_ssn_input) 
         new_family_layout.addRow("Family Name:", self.new_family_name_input)
         
         # Page 2: Link Existing Family
@@ -223,7 +229,13 @@ class StudentFormWidget(QWidget):
         self.dob.returnPressed.connect(self.address.setFocus)
         self.address.returnPressed.connect(self.gender.setFocus)
         
-        self.gender.activated.connect(self.new_family_name_input.setFocus)
+        # MODIFIED: Chain from gender to the NEW SSN input
+        self.gender.activated.connect(self.new_family_ssn_input.setFocus)
+        
+        # MODIFIED: Chain from NEW SSN input to the Family Name input
+        self.new_family_ssn_input.returnPressed.connect(self.new_family_name_input.setFocus)
+        
+        # MODIFIED: Chain from Family Name input to Admission Date input
         self.new_family_name_input.returnPressed.connect(self.date_of_admission.setFocus)
         
         self.date_of_admission.returnPressed.connect(self.monthly_fee.setFocus)
@@ -243,7 +255,7 @@ class StudentFormWidget(QWidget):
     def get_data(self):
         """
         Validates all fields and returns the data for submission.
-        (Updated to include Admission Date future check and Minimum Fee check)
+        (MODIFIED: Logic reordered to defer family creation until all validation passes)
         """
         data = {
             "first_name": self.first_name.text().strip(),
@@ -265,20 +277,22 @@ class StudentFormWidget(QWidget):
             "gender", "address", "date_of_admission", 
             "monthly_fee", "annual_fund", "student_class"
         ]
+        
+        # --- 1. Basic Validation (Required Fields) ---
         is_valid, error_message = validate_required_fields(data, required_fields)
         if not is_valid:
             show_warning(self, "Validation Error", error_message)
             return None, None, None, False
 
-        # --- Date and Fee Validations (UPDATED) ---
+        # --- 2. Date and Fee Validations (All client-side checks MUST pass) ---
         
-        # 1.1. Validate DOB format
+        # 2.1. Validate DOB format
         is_valid_dob, dob_msg = validate_date_format(data['dob'])
         if not is_valid_dob:
             show_warning(self, "Invalid Date", f"Date of Birth: {dob_msg}")
             return None, None, None, False
         
-        # 1.2. Validate Admission Date format and rule: MUST NOT BE FUTURE
+        # 2.2. Validate Admission Date format and rule: MUST NOT BE FUTURE
         is_valid_adm_format, adm_format_msg = validate_date_format(data['date_of_admission'])
         if not is_valid_adm_format:
             show_warning(self, "Invalid Date", f"Date of Admission: {adm_format_msg}")
@@ -289,20 +303,19 @@ class StudentFormWidget(QWidget):
             show_warning(self, "Invalid Date", f"Date of Admission: {adm_future_msg}")
             return None, None, None, False
 
-        # 1.3. Validate Minimum Monthly Fee (> 0)
+        # 2.3. Validate Minimum Monthly Fee (> 0)
         is_valid_mon, mon_msg = validate_is_positive_non_zero_float(data['monthly_fee'])
         if not is_valid_mon:
             show_warning(self, "Invalid Fee", f"Monthly Fee: {mon_msg}")
             return None, None, None, False
             
-        # 1.4. Validate Annual Fund (Can be 0, so use original is_float)
+        # 2.4. Validate Annual Fund (Can be 0, so use original is_float)
         is_valid_ann, ann_msg = validate_is_float(data['annual_fund'])
         if not is_valid_ann:
             show_warning(self, "Invalid Fund", f"Annual Fund: {ann_msg}")
             return None, None, None, False
             
-
-        # --- Contact validation ---
+        # --- 3. Contact Validation (MUST pass) ---
         contacts = []
         has_phone = False
         if not self.contact_rows:
@@ -327,16 +340,33 @@ class StudentFormWidget(QWidget):
         if not has_phone:
             show_warning(self, "Validation Error", "At least one contact must be a phone number.")
             return None, None, None, False
-        
-        # --- Family ID Logic ---
+
+
+        # --- 4. Family ID/Creation Logic (NOW SAFE: Runs only after all validation passes) ---
         final_family_id = None
         if self.radio_create_new.isChecked():
-            new_ssn = self.new_family_ssn_label.text()
+            new_ssn = self.new_family_ssn_input.text().strip() 
             new_name = self.new_family_name_input.text().strip()
+            
+            # 4.1. Validate New SSN Format (5 digits)
+            is_valid_ssn, ssn_msg = validate_ssn(new_ssn, required_length=5) 
+            if not is_valid_ssn:
+                show_warning(self, "Validation Error", f"Family SSN: {ssn_msg}")
+                return None, None, None, False
+                
+            # 4.2. Validate Family Name
             if not new_name:
                 show_warning(self, "Validation Error", "A Family Name is required to create a new family.")
                 return None, None, None, False
+                
+            # 4.3. CHECK FOR UNIQUENESS (BUSINESS RULE: MUST BE UNIQUE FOR NEW FAMILY)
+            if check_family_ssn_exists(new_ssn):
+                 show_warning(self, "Validation Error", f"The Family SSN '{new_ssn}' is already allocated. Please choose the 'Link to Existing Family' option or enter a unique SSN.")
+                 return None, None, None, False
+            
+            # 4.4. Call Service to Create Family (DB WRITE HAPPENS HERE)
             final_family_id = get_or_create_family(new_ssn, new_name)
+            
         else: # Link to existing
             if not self.selected_family_id:
                 show_warning(self, "Validation Error", "Please use the 'Search' button to select a family.")
@@ -346,7 +376,8 @@ class StudentFormWidget(QWidget):
         if not final_family_id:
             show_warning(self, "Family Error", "Could not create or link the family record.")
             return None, None, None, False
-        
+
+        # --- 5. Return Data for Student Creation ---
         return data, contacts, final_family_id, True
 
     def populate_data(self, student_data):
@@ -397,11 +428,14 @@ class StudentFormWidget(QWidget):
                       self.new_family_name_input]: 
             field.clear()
             
+        # MODIFIED: Clear the SSN input field
+        self.new_family_ssn_input.clear()
+            
         self.date_of_admission.setText(datetime.now().strftime("%Y-%m-%d"))
         self.gender.setCurrentIndex(0)
         
         self.radio_create_new.setChecked(True)
-        self.load_initial_data()
+        self.load_initial_data() # This re-fetches the next SSN and sets it on the input
         self.linked_family_label.setText("Selected Family: N/A")
         self.linked_family_label.setStyleSheet("")
         self.selected_family_id = None

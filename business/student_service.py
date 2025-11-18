@@ -5,7 +5,7 @@ from dal.student_dal import (
     dal_get_or_create_family, dal_get_next_family_ssn, dal_search_families,
     dal_add_student_transaction, dal_search_students, dal_get_student_contacts,
     dal_check_student_exists, dal_get_student_details_by_id, dal_update_student_transaction,
-    dal_check_student_uniqueness, dal_remove_student
+    dal_check_student_uniqueness, dal_remove_student, dal_check_family_ssn_exists # ADDED IMPORT
 )
 from business.due_service import check_if_monthly_fee_was_run
 import logging
@@ -25,17 +25,17 @@ def get_or_create_family(family_ssn, family_name):
 def get_next_family_ssn():
     """
     Calculates the next available family SSN.
-    Starts at 10001.
+    Starts at 20001.
     """
     try:
         next_ssn = dal_get_next_family_ssn()
         if next_ssn is not None:
             return str(next_ssn + 1)
         else:
-            return "10001"
+            return "20001"
     except Exception as e:
         logging.error(f"[ERROR] get_next_family_ssn: {e}")
-        return "10001"
+        return "20001"
 
 def search_families(search_term):
     """
@@ -55,6 +55,18 @@ def search_families(search_term):
     except Exception as e:
         logging.error(f"[ERROR] search_families: {e}")
         return []
+
+# --- NEW SERVICE FUNCTION: Check Family SSN Uniqueness ---
+def check_family_ssn_exists(family_ssn):
+    """
+    Service method to check if a Family SSN is already in use.
+    """
+    try:
+        return dal_check_family_ssn_exists(family_ssn)
+    except Exception as e:
+        logging.error(f"[ERROR] check_family_ssn_exists: {e}")
+        return True # Default to True to prevent accidental overwriting on error
+# --- END NEW SERVICE FUNCTION ---
 
 def add_student(first_name, middle_name, last_name, father_name, mother_name,
                 dob, address, gender, contacts, date_of_admission, monthly_fee,
