@@ -11,6 +11,8 @@ from ui.add_due_widget import AddDueWidget
 from ui.make_payment_widget import MakePaymentWidget
 from ui.payment_history_widget import PaymentHistoryWidget
 from ui.remove_student_widget import RemoveStudentWidget # NEW IMPORT
+from ui.add_teacher_widget import AddTeacherWidget
+from ui.search_teacher_widget import SearchTeacherWidget
 
 class AdminDashboard(QWidget):
     """
@@ -36,6 +38,8 @@ class AdminDashboard(QWidget):
         self.payment_icon = style.standardIcon(QStyle.SP_DialogApplyButton)
         self.history_icon = style.standardIcon(QStyle.SP_DialogResetButton)
         self.remove_icon = style.standardIcon(QStyle.SP_DialogDiscardButton) # NEW ICON
+        self.add_teacher_icon = style.standardIcon(QStyle.SP_FileDialogNewFolder)
+        self.search_teacher_icon = style.standardIcon(QStyle.SP_FileDialogDetailedView)
         self.logout_icon = style.standardIcon(QStyle.SP_DialogCancelButton)
 
         self.init_ui()
@@ -83,13 +87,21 @@ class AdminDashboard(QWidget):
         self.btn_remove_student = QPushButton(" Remove Student")
         self.btn_remove_student.setIcon(self.remove_icon)
         
+        # Teacher Management Buttons
+        self.btn_add_teacher = QPushButton(" Add Teacher")
+        self.btn_add_teacher.setIcon(self.add_teacher_icon)
+        
+        self.btn_search_teacher = QPushButton(" Search Teacher")
+        self.btn_search_teacher.setIcon(self.search_teacher_icon)
+        
         self.btn_logout = QPushButton(" Logout")
         self.btn_logout.setIcon(self.logout_icon)
         
         buttons = [
             self.btn_add_student, self.btn_update_student, self.btn_search_student,
             self.btn_add_due, self.btn_make_payment, self.btn_payment_history,
-            self.btn_remove_student # ADDED
+            self.btn_remove_student, # ADDED
+            self.btn_add_teacher, self.btn_search_teacher # TEACHER MANAGEMENT
         ]
         
         sidebar_layout = QVBoxLayout(sidebar)
@@ -132,6 +144,8 @@ class AdminDashboard(QWidget):
         self.btn_make_payment.clicked.connect(self.show_make_payment)
         self.btn_payment_history.clicked.connect(self.show_payment_history)
         self.btn_remove_student.clicked.connect(self.show_remove_student) # NEW CONNECTION
+        self.btn_add_teacher.clicked.connect(self.show_add_teacher) # TEACHER MANAGEMENT
+        self.btn_search_teacher.clicked.connect(self.show_search_teacher) # TEACHER MANAGEMENT
         self.btn_logout.clicked.connect(self.handle_logout)
 
     def _clear_content_area(self):
@@ -176,6 +190,16 @@ class AdminDashboard(QWidget):
     def show_remove_student(self):
         self._clear_content_area()
         widget = RemoveStudentWidget()
+        self.content_stack_layout.addWidget(widget)
+
+    def show_add_teacher(self):
+        self._clear_content_area()
+        widget = AddTeacherWidget()
+        self.content_stack_layout.addWidget(widget)
+
+    def show_search_teacher(self):
+        self._clear_content_area()
+        widget = SearchTeacherWidget()
         self.content_stack_layout.addWidget(widget)
 
     def handle_logout(self):

@@ -27,12 +27,20 @@ def initialize_db():
         CREATE TABLE IF NOT EXISTS person (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fathername TEXT NOT NULL,
-            mothername TEXT NOT NULL,
+            mothername TEXT,
             dob DATE NOT NULL,
             address TEXT NOT NULL,
             gender TEXT NOT NULL
         )
     ''')
+    
+    # Make mothername nullable for existing tables (if it exists and is NOT NULL)
+    try:
+        cursor.execute("SELECT mothername FROM person LIMIT 1")
+        # If we get here, table exists - check if we need to alter it
+        # SQLite doesn't support ALTER COLUMN, so we'll handle it gracefully
+    except sqlite3.OperationalError:
+        pass  # Table doesn't exist yet, will be created with nullable mothername
 
     # Fullname table
     cursor.execute('''
@@ -96,7 +104,61 @@ def initialize_db():
             joining_date DATE,
             salary DOUBLE NOT NULL,
             rating INTEGER CHECK(rating BETWEEN 1 AND 5),
+            security_deposit DOUBLE DEFAULT 0,
             FOREIGN KEY(person_id) REFERENCES person(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # Add security_deposit column if it doesn't exist
+    try:
+        cursor.execute("SELECT security_deposit FROM teacher LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE teacher ADD COLUMN security_deposit DOUBLE DEFAULT 0")
+
+    # Subject table (for teacher subjects)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subject (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            subject_name TEXT NOT NULL,
+            FOREIGN KEY(teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # Qualification table (for teacher qualifications)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS qualification (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            degree TEXT NOT NULL,
+            institution TEXT,
+            year INTEGER,
+            FOREIGN KEY(teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # Experience table (for teacher experience)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS experience (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            institution TEXT NOT NULL,
+            position TEXT,
+            start_date DATE,
+            end_date DATE,
+            years_of_experience INTEGER,
+            FOREIGN KEY(teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # Class_Section table (for teacher class assignments)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS class_section (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            class_name TEXT NOT NULL,
+            section TEXT,
+            FOREIGN KEY(teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
         )
     ''')
 

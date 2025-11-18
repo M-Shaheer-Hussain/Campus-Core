@@ -104,7 +104,7 @@ def validate_min_age_at_event(dob_str, event_date_str, min_years, dob_format="%Y
         age = event_dt.year - dob_dt.year - ((event_dt.month, event_dt.day) < (dob_dt.month, dob_dt.day))
 
         if age < min_years:
-            return False, f"Student must be at least {min_years} years old at the time of admission."
+            return False, f"Person must be at least {min_years} years old at the time of the event."
         return True, None
     except ValueError:
         return False, "Invalid date format provided for DOB or Admission Date."
