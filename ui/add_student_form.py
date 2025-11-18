@@ -27,7 +27,7 @@ class ContactRow(QWidget):
         self.value_input = QLineEdit()
         self.value_input.setPlaceholderText("Value (e.g., 03XXYYYYYYY or email@example.com)")
         self.label_input = QLineEdit()
-        self.label_input.setPlaceholderText("Label (e.g., primary, father)")
+        self.label_input.setPlaceholderText("Label (e.g. Primary)")
         self.remove_btn = QPushButton("X")
         self.remove_btn.setFixedSize(24, 24)
         self.remove_btn.setObjectName("secondaryButton")
@@ -57,7 +57,7 @@ class StudentFormWidget(QWidget):
         self.setStyleSheet(open("assets/style.qss").read())
         self.contact_rows = []
         self.selected_family_id = None
-        self.next_available_ssn = "10001"
+        self.next_available_ssn = "20001"
         
         self.init_ui()
         self.load_initial_data()
@@ -301,24 +301,6 @@ class StudentFormWidget(QWidget):
             show_warning(self, "Invalid Fund", f"Annual Fund: {ann_msg}")
             return None, None, None, False
             
-        # --- Family ID Logic ---
-        final_family_id = None
-        if self.radio_create_new.isChecked():
-            new_ssn = self.new_family_ssn_label.text()
-            new_name = self.new_family_name_input.text().strip()
-            if not new_name:
-                show_warning(self, "Validation Error", "A Family Name is required to create a new family.")
-                return None, None, None, False
-            final_family_id = get_or_create_family(new_ssn, new_name)
-        else: # Link to existing
-            if not self.selected_family_id:
-                show_warning(self, "Validation Error", "Please use the 'Search' button to select a family.")
-                return None, None, None, False
-            final_family_id = self.selected_family_id
-            
-        if not final_family_id:
-            show_warning(self, "Family Error", "Could not create or link the family record.")
-            return None, None, None, False
 
         # --- Contact validation ---
         contacts = []
@@ -345,7 +327,26 @@ class StudentFormWidget(QWidget):
         if not has_phone:
             show_warning(self, "Validation Error", "At least one contact must be a phone number.")
             return None, None, None, False
-
+        
+        # --- Family ID Logic ---
+        final_family_id = None
+        if self.radio_create_new.isChecked():
+            new_ssn = self.new_family_ssn_label.text()
+            new_name = self.new_family_name_input.text().strip()
+            if not new_name:
+                show_warning(self, "Validation Error", "A Family Name is required to create a new family.")
+                return None, None, None, False
+            final_family_id = get_or_create_family(new_ssn, new_name)
+        else: # Link to existing
+            if not self.selected_family_id:
+                show_warning(self, "Validation Error", "Please use the 'Search' button to select a family.")
+                return None, None, None, False
+            final_family_id = self.selected_family_id
+            
+        if not final_family_id:
+            show_warning(self, "Family Error", "Could not create or link the family record.")
+            return None, None, None, False
+        
         return data, contacts, final_family_id, True
 
     def populate_data(self, student_data):
