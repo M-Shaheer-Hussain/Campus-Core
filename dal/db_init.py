@@ -105,6 +105,9 @@ def initialize_db():
             salary DOUBLE NOT NULL,
             rating INTEGER CHECK(rating BETWEEN 1 AND 5),
             security_deposit DOUBLE DEFAULT 0,
+            role TEXT NOT NULL DEFAULT 'Helper Teacher',
+            is_active INTEGER DEFAULT 1,
+            date_of_leaving DATE,
             FOREIGN KEY(person_id) REFERENCES person(id) ON DELETE CASCADE
         )
     ''')
@@ -114,6 +117,22 @@ def initialize_db():
         cursor.execute("SELECT security_deposit FROM teacher LIMIT 1")
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE teacher ADD COLUMN security_deposit DOUBLE DEFAULT 0")
+
+    # Ensure new role/is_active/date_of_leaving columns exist for legacy DBs
+    try:
+        cursor.execute("SELECT role FROM teacher LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE teacher ADD COLUMN role TEXT DEFAULT 'Helper Teacher'")
+
+    try:
+        cursor.execute("SELECT is_active FROM teacher LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE teacher ADD COLUMN is_active INTEGER DEFAULT 1")
+
+    try:
+        cursor.execute("SELECT date_of_leaving FROM teacher LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE teacher ADD COLUMN date_of_leaving DATE")
 
     # Subject table (for teacher subjects)
     cursor.execute('''

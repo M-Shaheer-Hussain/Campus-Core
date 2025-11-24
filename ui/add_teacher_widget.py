@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from business.teacher_service import add_teacher
+from business.teacher_service import add_teacher, TEACHER_ROLES
 from common.utils import (
     show_warning, validate_required_fields, validate_date_format, 
     validate_phone_length, validate_is_float, validate_is_not_future_date,
@@ -203,6 +203,8 @@ class AddTeacherWidget(QWidget):
         self.rating = QComboBox()
         self.rating.addItems(["1", "2", "3", "4", "5"])
         self.rating.setCurrentIndex(2)  # Default to 3
+        self.role_combo = QComboBox()
+        self.role_combo.addItems(TEACHER_ROLES)
         self.security_deposit = QLineEdit()
         self.security_deposit.setText("0")
         self.security_deposit.setPlaceholderText("e.g., 10000")
@@ -210,6 +212,7 @@ class AddTeacherWidget(QWidget):
         form_layout.addRow("Joining Date:", self.joining_date)
         form_layout.addRow("Salary:", self.salary)
         form_layout.addRow("Rating (1-5):", self.rating)
+        form_layout.addRow("Role:", self.role_combo)
         form_layout.addRow("Security Deposit:", self.security_deposit)
         
         # --- Contact Info Setup ---
@@ -382,7 +385,8 @@ class AddTeacherWidget(QWidget):
         self.dob.returnPressed.connect(self.address.setFocus)
         self.address.returnPressed.connect(self.joining_date.setFocus)
         self.joining_date.returnPressed.connect(self.salary.setFocus)
-        self.salary.returnPressed.connect(self.security_deposit.setFocus)
+        self.salary.returnPressed.connect(self.role_combo.setFocus)
+        self.role_combo.activated.connect(lambda *_: self.security_deposit.setFocus())
         # Connect security_deposit to first contact row if it exists, otherwise to submit
         if self.contact_rows:
             self.security_deposit.returnPressed.connect(self.contact_rows[0].type_combo.setFocus)
@@ -405,6 +409,7 @@ class AddTeacherWidget(QWidget):
             'joining_date': self.joining_date.text().strip(),
             'salary': self.salary.text().strip(),
             'rating': self.rating.currentText(),
+            'role': self.role_combo.currentText(),
             'security_deposit': self.security_deposit.text().strip() or "0"
         }
         
@@ -449,6 +454,18 @@ class AddTeacherWidget(QWidget):
             if not is_valid:
                 show_warning(self, "Invalid Security Deposit", error_msg)
                 return None, None, False, None, None, None, None
+        else:
+            data['security_deposit'] = "0"
+
+        salary_value = float(data['salary'])
+        security_value = float(data['security_deposit'])
+        if security_value > salary_value:
+            show_warning(
+                self,
+                "Validation Error",
+                "Security deposit cannot be greater than the teacher's salary."
+            )
+            return None, None, False, None, None, None, None
         
         # Collect contacts
         contacts = []
@@ -526,7 +543,7 @@ class AddTeacherWidget(QWidget):
                 data['father_name'], data['dob'], 
                 data['address'], data['gender'], contacts,
                 data['joining_date'], data['salary'], data['rating'],
-                data['security_deposit'],
+                data['security_deposit'], role=data['role'],
                 subjects=subjects, qualifications=qualifications,
                 experiences=experiences, class_sections=class_sections
             )
@@ -554,6 +571,7 @@ class AddTeacherWidget(QWidget):
         self.joining_date.setText(datetime.now().strftime("%Y-%m-%d"))
         self.salary.clear()
         self.rating.setCurrentIndex(2)
+        self.role_combo.setCurrentIndex(0)
         self.security_deposit.setText("0")
         
         # Clear contacts (keep one row)

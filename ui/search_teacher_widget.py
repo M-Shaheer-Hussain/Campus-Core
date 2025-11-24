@@ -2,9 +2,10 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QTreeWidget, QTreeWidgetItem, QAbstractItemView, QMessageBox, QLabel,
-    QHeaderView, QDialog, QFormLayout, QDialogButtonBox
+    QHeaderView, QDialog, QFormLayout, QDialogButtonBox, QSizePolicy,
+    QComboBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont
 from business.teacher_service import search_teachers, get_teacher_details_by_id, update_teacher_security_deposit, get_teacher_security_funds
 from common.utils import validate_is_positive_float, show_warning
@@ -53,9 +54,11 @@ class SearchTeacherWidget(QWidget):
     """
     A widget for searching teachers and managing their security deposits.
     """
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, enable_double_click=True):
         super().__init__(parent)
         self.TEACHER_ID_ROLE = Qt.UserRole + 1
+        self.TEACHER_DATA_ROLE = Qt.UserRole + 2
+        self.enable_double_click = enable_double_click
         
         self.init_ui()
         self.init_connections()
@@ -64,6 +67,7 @@ class SearchTeacherWidget(QWidget):
         main_layout = QVBoxLayout(self)
         
         # Search Input Group
+        search_controls_layout = QHBoxLayout()
         search_bar_layout = QHBoxLayout()
         self.search_label = QLabel("Search by Teacher ID or Name:")
         self.search_input = QLineEdit()
@@ -75,14 +79,22 @@ class SearchTeacherWidget(QWidget):
         search_bar_layout.addWidget(self.search_input, 1)
         search_bar_layout.addWidget(self.search_btn)
         
-        main_layout.addLayout(search_bar_layout)
+        self.status_filter = QComboBox()
+        self.status_filter.addItems(["Active Teachers", "Left Teachers", "All Teachers"])
+        self.status_filter.setCurrentIndex(0)
+        self.status_filter.setToolTip("Filter results by employment status")
+
+        search_controls_layout.addLayout(search_bar_layout, 1)
+        search_controls_layout.addWidget(self.status_filter)
+
+        main_layout.addLayout(search_controls_layout)
         
         # Results Tree
         self.results_tree = QTreeWidget()
-        self.results_tree.setColumnCount(7)
+        self.results_tree.setColumnCount(9)
         self.results_tree.setHeaderLabels([
-            "Teacher ID", "Full Name", "Joining Date", "Salary", 
-            "Rating", "Security Deposit", "Actions"
+            "Teacher ID", "Full Name", "Role", "Joining Date", "Salary", 
+            "Rating", "Security Deposit", "Status", "Actions"
         ])
         
         self.results_tree.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -92,13 +104,19 @@ class SearchTeacherWidget(QWidget):
         
         # Set column widths
         header = self.results_tree.header()
+        # Make the name column sized to contents and keep status/actions readable.
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(120)
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)
+        self.results_tree.setColumnWidth(8, 220)
         
         main_layout.addWidget(self.results_tree)
         
@@ -111,7 +129,9 @@ class SearchTeacherWidget(QWidget):
     def init_connections(self):
         self.search_btn.clicked.connect(self.on_search)
         self.search_input.returnPressed.connect(self.on_search)
-        self.results_tree.itemDoubleClicked.connect(self.on_view_details)
+        self.status_filter.currentIndexChanged.connect(self.on_search)
+        if self.enable_double_click:
+            self.results_tree.itemDoubleClicked.connect(self.on_view_details)
 
     def on_search(self):
         """Searches for teachers."""
@@ -124,7 +144,7 @@ class SearchTeacherWidget(QWidget):
             return
             
         try:
-            results = search_teachers(search_term)
+            results = search_teachers(search_term, status_filter=self.status_filter.currentText())
             self.populate_tree(results)
             
             if not results:
@@ -140,45 +160,78 @@ class SearchTeacherWidget(QWidget):
         
         for teacher in results:
             item = QTreeWidgetItem(self.results_tree)
+            # Ensure the row is tall enough to fully display the action buttons
+            # (set size hint on the Actions column so the widget cell height
+            # increases accordingly).
+            item.setSizeHint(8, QSize(0, 40))
             item.setText(0, str(teacher.get('teacher_id', '')))
             item.setText(1, teacher.get('full_name', ''))
-            item.setText(2, teacher.get('joining_date', '') or '')
-            item.setText(3, f"{teacher.get('salary', 0):.2f}")
-            item.setText(4, str(teacher.get('rating', '')))
-            item.setText(5, f"{teacher.get('security_deposit', 0):.2f}")
+            item.setText(2, teacher.get('role', ''))
+            item.setText(3, teacher.get('joining_date', '') or '')
+            item.setText(4, f"{teacher.get('salary', 0):.2f}")
+            item.setText(5, str(teacher.get('rating', '')))
+            item.setText(6, f"{teacher.get('security_deposit', 0):.2f}")
+
+            status_label = teacher.get('status_label') or ("Active" if teacher.get('is_active', 1) else "Left")
+            if teacher.get('is_active', 1) == 0 and teacher.get('date_of_leaving'):
+                status_label += f" (Left: {teacher.get('date_of_leaving')})"
+            item.setText(7, status_label)
             
             # Store teacher_id in item data
             item.setData(0, self.TEACHER_ID_ROLE, teacher.get('teacher_id'))
+            item.setData(0, self.TEACHER_DATA_ROLE, teacher)
+
+            if teacher.get('is_active', 1) == 0:
+                font = QFont(self.font())
+                font.setStrikeOut(True)
+                for col in range(self.results_tree.columnCount()):
+                    item.setFont(col, font)
             
             # Add action buttons column
             button_container = QWidget()
-            button_layout = QHBoxLayout(button_container)
-            button_layout.setContentsMargins(2, 2, 2, 2)
-            button_layout.setSpacing(5)
-            
-            # Check Security Funds button
-            check_btn = QPushButton("Check Security Funds")
+            # Stack the buttons vertically so their labels remain readable even on
+            # narrow window sizes.
+            button_layout = QVBoxLayout(button_container)
+            button_layout.setContentsMargins(4, 4, 4, 4)
+            button_layout.setSpacing(6)
+            button_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+            # Check Security button
+            check_btn = QPushButton("Security Info")
             check_btn.setObjectName("secondaryButton")
-            check_btn.setFixedHeight(25)
-            check_btn.setToolTip("View security deposit and time elapsed since joining")
-            check_btn.clicked.connect(lambda checked, tid=teacher.get('teacher_id'), 
-                                     name=teacher.get('full_name', ''): 
+            check_btn.setMinimumHeight(30)
+            check_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            check_btn.setToolTip("View security deposit and elapsed time details")
+            check_btn.clicked.connect(lambda checked, tid=teacher.get('teacher_id'),
+                                     name=teacher.get('full_name', ''):
                                      self.on_check_security_funds(tid, name))
-            
+
             # Update Security button
-            update_btn = QPushButton("Update Security Deposit")
+            update_btn = QPushButton("Update Deposit")
             update_btn.setObjectName("secondaryButton")
-            update_btn.setFixedHeight(25)
+            update_btn.setMinimumHeight(30)
+            update_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             update_btn.setToolTip("Modify the security deposit amount")
-            update_btn.clicked.connect(lambda checked, tid=teacher.get('teacher_id'), 
-                                      name=teacher.get('full_name', ''), 
-                                      current=teacher.get('security_deposit', 0): 
+            update_btn.clicked.connect(lambda checked, tid=teacher.get('teacher_id'),
+                                      name=teacher.get('full_name', ''),
+                                      current=teacher.get('security_deposit', 0):
                                       self.on_update_security(tid, name, current))
-            
+
             button_layout.addWidget(check_btn)
             button_layout.addWidget(update_btn)
+            button_container.setMinimumWidth(150)
             
-            self.results_tree.setItemWidget(item, 6, button_container)
+            self.results_tree.setItemWidget(item, 8, button_container)
+
+    def get_selected_teacher(self):
+        """Returns currently selected teacher id and name."""
+        selected_items = self.results_tree.selectedItems()
+        if not selected_items:
+            return None, None
+        item = selected_items[0]
+        teacher_id = item.data(0, self.TEACHER_ID_ROLE)
+        teacher_name = item.text(1)
+        return teacher_id, teacher_name
 
     def on_view_details(self, item, column):
         """Shows full teacher details in a message box."""
@@ -204,6 +257,8 @@ class SearchTeacherWidget(QWidget):
 <b>Joining Date:</b> {details.get('joining_date', '')}<br>
 <b>Salary:</b> {details.get('salary', 0):.2f}<br>
 <b>Rating:</b> {details.get('rating', '')}/5<br>
+<b>Role:</b> {details.get('role', '')}<br>
+<b>Status:</b> {"Active" if details.get('is_active', 1) else f"Left on {details.get('date_of_leaving', 'N/A')}"}<br>
 <b>Security Deposit:</b> {details.get('security_deposit', 0):.2f}<br><br>
 <b>Contacts:</b><br>
 """

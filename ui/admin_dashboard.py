@@ -13,6 +13,7 @@ from ui.payment_history_widget import PaymentHistoryWidget
 from ui.remove_student_widget import RemoveStudentWidget # NEW IMPORT
 from ui.add_teacher_widget import AddTeacherWidget
 from ui.search_teacher_widget import SearchTeacherWidget
+from ui.remove_teacher_widget import RemoveTeacherWidget
 
 class AdminDashboard(QWidget):
     """
@@ -90,9 +91,12 @@ class AdminDashboard(QWidget):
         # Teacher Management Buttons
         self.btn_add_teacher = QPushButton(" Add Teacher")
         self.btn_add_teacher.setIcon(self.add_teacher_icon)
-        
+
         self.btn_search_teacher = QPushButton(" Search Teacher")
         self.btn_search_teacher.setIcon(self.search_teacher_icon)
+
+        self.btn_remove_teacher = QPushButton(" Remove Teacher")
+        self.btn_remove_teacher.setIcon(self.remove_icon)
         
         self.btn_logout = QPushButton(" Logout")
         self.btn_logout.setIcon(self.logout_icon)
@@ -101,7 +105,7 @@ class AdminDashboard(QWidget):
             self.btn_add_student, self.btn_update_student, self.btn_search_student,
             self.btn_add_due, self.btn_make_payment, self.btn_payment_history,
             self.btn_remove_student, # ADDED
-            self.btn_add_teacher, self.btn_search_teacher # TEACHER MANAGEMENT
+            self.btn_add_teacher, self.btn_search_teacher, self.btn_remove_teacher # TEACHER MANAGEMENT
         ]
         
         sidebar_layout = QVBoxLayout(sidebar)
@@ -146,6 +150,7 @@ class AdminDashboard(QWidget):
         self.btn_remove_student.clicked.connect(self.show_remove_student) # NEW CONNECTION
         self.btn_add_teacher.clicked.connect(self.show_add_teacher) # TEACHER MANAGEMENT
         self.btn_search_teacher.clicked.connect(self.show_search_teacher) # TEACHER MANAGEMENT
+        self.btn_remove_teacher.clicked.connect(self.show_remove_teacher)
         self.btn_logout.clicked.connect(self.handle_logout)
 
     def _clear_content_area(self):
@@ -200,6 +205,11 @@ class AdminDashboard(QWidget):
     def show_search_teacher(self):
         self._clear_content_area()
         widget = SearchTeacherWidget()
+        self.content_stack_layout.addWidget(widget)
+
+    def show_remove_teacher(self):
+        self._clear_content_area()
+        widget = RemoveTeacherWidget()
         self.content_stack_layout.addWidget(widget)
 
     def handle_logout(self):

@@ -34,10 +34,21 @@ def dal_add_teacher_transaction(person_data, fullname_data, contacts, teacher_da
 
         # 4. Insert into teacher
         cursor.execute('''
-            INSERT INTO teacher (person_id, joining_date, salary, rating, security_deposit)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (person_id, teacher_data['joining_date'], teacher_data['salary'], 
-              teacher_data['rating'], teacher_data.get('security_deposit', 0)))
+            INSERT INTO teacher (
+                person_id, joining_date, salary, rating, security_deposit,
+                role, is_active, date_of_leaving
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            person_id,
+            teacher_data['joining_date'],
+            teacher_data['salary'],
+            teacher_data['rating'],
+            teacher_data.get('security_deposit', 0),
+            teacher_data.get('role', 'Helper Teacher'),
+            teacher_data.get('is_active', 1),
+            teacher_data.get('date_of_leaving')
+        ))
         
         new_teacher_id = cursor.lastrowid
         
@@ -113,6 +124,7 @@ def dal_get_teacher_details_by_id(teacher_id):
             SELECT 
                 t.id as teacher_id, t.person_id, t.joining_date, t.salary, 
                 t.rating, t.security_deposit,
+                t.role, t.is_active, t.date_of_leaving,
                 p.fathername, p.dob, p.address, p.gender,
                 f.first_name, f.middle_name, f.last_name
             FROM teacher t
@@ -303,5 +315,44 @@ def dal_get_teacher_security_funds(teacher_id):
             result['years_elapsed'] = 0
         
         return result
+    finally:
+        conn.close()
+
+def dal_get_teacher_compensation(teacher_id):
+    """
+    Returns salary and current security deposit for validation purposes.
+    """
+    conn = connect_db()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT salary, security_deposit
+            FROM teacher
+            WHERE id = ?
+        """, (teacher_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def dal_mark_teacher_left(teacher_id, date_of_leaving):
+    """
+    Marks a teacher as inactive and stores the date of leaving.
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE teacher
+            SET is_active = 0,
+                date_of_leaving = ?
+            WHERE id = ?
+        """, (date_of_leaving, teacher_id))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        raise e
     finally:
         conn.close()

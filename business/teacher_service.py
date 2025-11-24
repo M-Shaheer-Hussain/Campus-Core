@@ -3,15 +3,24 @@ from dal.teacher_dal import (
     dal_add_teacher_transaction, dal_search_teachers, dal_get_teacher_details_by_id,
     dal_get_teacher_contacts, dal_check_teacher_exists, dal_update_teacher_security_deposit,
     dal_check_teacher_uniqueness, dal_get_teacher_subjects, dal_get_teacher_qualifications,
-    dal_get_teacher_experiences, dal_get_teacher_class_sections, dal_get_teacher_security_funds
+    dal_get_teacher_experiences, dal_get_teacher_class_sections, dal_get_teacher_security_funds,
+    dal_get_teacher_compensation, dal_mark_teacher_left
 )
 import logging
 import re
 
 logging.basicConfig(level=logging.INFO)
 
+TEACHER_ROLES = [
+    "Principal",
+    "Coordinator",
+    "Head Teacher",
+    "Helper Teacher"
+]
+
 def add_teacher(first_name, middle_name, last_name, father_name,
-                dob, address, gender, contacts, joining_date, salary, rating, security_deposit=0,
+                dob, address, gender, contacts, joining_date, salary, rating,
+                security_deposit=0, role="Helper Teacher",
                 subjects=None, qualifications=None, experiences=None, class_sections=None):
     """
     Service method to handle teacher addition with validation.
@@ -47,11 +56,17 @@ def add_teacher(first_name, middle_name, last_name, father_name,
     except ValueError:
         return False, "Rating must be a valid integer between 1 and 5.", None
 
+    # 3.5 Validate role
+    if role not in TEACHER_ROLES:
+        return False, "Invalid teacher role provided.", None
+
     # 4. Validate security deposit (if provided)
     try:
         security_amount = float(security_deposit) if security_deposit else 0
         if security_amount < 0:
             return False, "Security deposit cannot be negative.", None
+        if security_amount > salary_amount:
+            return False, "Security deposit cannot exceed salary.", None
     except ValueError:
         return False, "Security deposit must be a valid number.", None
 
@@ -75,7 +90,10 @@ def add_teacher(first_name, middle_name, last_name, father_name,
             'joining_date': joining_date,
             'salary': salary_amount,
             'rating': rating_value,
-            'security_deposit': security_amount
+            'security_deposit': security_amount,
+            'role': role,
+            'is_active': 1,
+            'date_of_leaving': None
         }
         
         new_teacher_id = dal_add_teacher_transaction(
@@ -90,7 +108,7 @@ def add_teacher(first_name, middle_name, last_name, father_name,
         logging.error(f"[ERROR] add_teacher: {e}")
         return False, str(e), None
 
-def search_teachers(search_term):
+def search_teachers(search_term, status_filter="Active"):
     """
     Search for teachers by ID or name.
     Builds the query in the service layer, passes to DAL.
@@ -103,17 +121,22 @@ def search_teachers(search_term):
             t.joining_date,
             t.salary,
             t.rating,
-            t.security_deposit
+            t.security_deposit,
+            t.role,
+            t.is_active,
+            t.date_of_leaving,
+            CASE WHEN t.is_active = 1 THEN 'Active' ELSE 'Left' END as status_label
         FROM teacher t
         JOIN person p ON t.person_id = p.id
         JOIN fullname f ON f.person_id = p.id
     """
     params = []
-    
+    conditions = []
+
     cleaned_term = re.sub(r'\D', '', search_term)
     
     if cleaned_term.isdigit():
-        where_clause = "WHERE t.id = ?"
+        conditions.append("t.id = ?")
         params.append(int(cleaned_term))
     else:
         terms = search_term.split()
@@ -122,11 +145,21 @@ def search_teachers(search_term):
             name_conditions.append("(f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ?)")
             params.extend([f"%{term}%", f"%{term}%", f"%{term}%"])
         if name_conditions:
-            where_clause = "WHERE (" + " AND ".join(name_conditions) + ")"
-        else:
-            where_clause = ""
+            conditions.append("(" + " AND ".join(name_conditions) + ")")
+
+    normalized_status = (status_filter or "Active").strip().lower()
+    if normalized_status in ("active", "active teachers"):
+        conditions.append("t.is_active = 1")
+    elif normalized_status in ("left", "left teachers", "inactive"):
+        conditions.append("t.is_active = 0")
+    elif normalized_status in ("all", "all teachers"):
+        pass
+    else:
+        conditions.append("t.is_active = 1")
             
-    query += " " + where_clause
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
     query += " ORDER BY t.id DESC"
             
     try:
@@ -183,15 +216,58 @@ def update_teacher_security_deposit(teacher_id, security_deposit):
     if not is_valid:
         return False, error_msg
     
-    # Check teacher exists
-    if not dal_check_teacher_exists(teacher_id):
+    compensation = dal_get_teacher_compensation(teacher_id)
+    if not compensation:
         return False, "Teacher not found."
+    
+    new_amount = float(security_deposit)
+    if new_amount > compensation.get('salary', 0):
+        return False, "Security deposit cannot exceed the teacher's salary."
         
     try:
-        dal_update_teacher_security_deposit(teacher_id, float(security_deposit))
+        dal_update_teacher_security_deposit(teacher_id, new_amount)
         return True, "Security deposit updated successfully."
     except Exception as e:
         logging.error(f"[ERROR] update_teacher_security_deposit: {e}")
+        return False, str(e)
+
+def remove_teacher(teacher_id, date_of_leaving):
+    """
+    Marks a teacher as inactive and stores their leaving date.
+    """
+    from common.utils import validate_is_not_future_date, validate_date_format
+    details = get_teacher_details_by_id(teacher_id)
+    if not details:
+        return False, "Teacher not found."
+
+    if details.get('is_active') == 0:
+        return False, "Teacher is already marked as left."
+
+    is_valid_format, error_msg = validate_date_format(date_of_leaving)
+    if not is_valid_format:
+        return False, error_msg
+
+    is_valid, error_msg = validate_is_not_future_date(date_of_leaving)
+    if not is_valid:
+        return False, error_msg
+
+    joining_date = details.get('joining_date')
+    if joining_date:
+        from datetime import datetime
+        try:
+            join_dt = datetime.strptime(joining_date, "%Y-%m-%d").date()
+            leave_dt = datetime.strptime(date_of_leaving, "%Y-%m-%d").date()
+            if leave_dt < join_dt:
+                return False, "Date of leaving cannot be earlier than the joining date."
+        except ValueError:
+            pass
+
+    try:
+        if dal_mark_teacher_left(teacher_id, date_of_leaving):
+            return True, "Teacher marked as left successfully."
+        return False, "Unable to update teacher status."
+    except Exception as e:
+        logging.error(f"[ERROR] remove_teacher: {e}")
         return False, str(e)
 
 def get_teacher_security_funds(teacher_id):
