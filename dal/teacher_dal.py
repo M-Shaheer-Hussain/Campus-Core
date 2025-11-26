@@ -97,6 +97,132 @@ def dal_add_teacher_transaction(person_data, fullname_data, contacts, teacher_da
     finally:
         conn.close()
 
+
+def dal_update_teacher_transaction(
+    teacher_id,
+    person_id,
+    teacher_payload,
+    form_data,
+    contacts,
+    subjects,
+    qualifications,
+    experiences,
+    class_sections,
+):
+    """
+    Updates teacher core data along with contacts and related collections.
+    """
+    conn = connect_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("BEGIN")
+
+        cursor.execute(
+            """
+            UPDATE person
+            SET fathername = ?, dob = ?, address = ?, gender = ?
+            WHERE id = ?
+            """,
+            (
+                form_data["father_name"],
+                form_data["dob"],
+                form_data["address"],
+                form_data["gender"],
+                person_id,
+            ),
+        )
+
+        cursor.execute(
+            """
+            UPDATE fullname
+            SET first_name = ?, middle_name = ?, last_name = ?
+            WHERE person_id = ?
+            """,
+            (
+                form_data["first_name"],
+                form_data.get("middle_name"),
+                form_data["last_name"],
+                person_id,
+            ),
+        )
+
+        cursor.execute(
+            """
+            UPDATE teacher
+            SET joining_date = ?, salary = ?, rating = ?, security_deposit = ?, role = ?
+            WHERE id = ?
+            """,
+            (
+                teacher_payload["joining_date"],
+                teacher_payload["salary"],
+                teacher_payload["rating"],
+                teacher_payload["security_deposit"],
+                teacher_payload["role"],
+                teacher_id,
+            ),
+        )
+
+        cursor.execute("DELETE FROM contact WHERE person_id = ?", (person_id,))
+        for contact in contacts:
+            cursor.execute(
+                """
+                INSERT INTO contact (person_id, type, value, label)
+                VALUES (?, ?, ?, ?)
+                """,
+                (person_id, contact["type"], contact["value"], contact["label"]),
+            )
+
+        cursor.execute("DELETE FROM subject WHERE teacher_id = ?", (teacher_id,))
+        for subject in subjects or []:
+            cursor.execute(
+                "INSERT INTO subject (teacher_id, subject_name) VALUES (?, ?)",
+                (teacher_id, subject),
+            )
+
+        cursor.execute("DELETE FROM qualification WHERE teacher_id = ?", (teacher_id,))
+        for qual in qualifications or []:
+            cursor.execute(
+                """
+                INSERT INTO qualification (teacher_id, degree, institution, year)
+                VALUES (?, ?, ?, ?)
+                """,
+                (teacher_id, qual.get("degree"), qual.get("institution"), qual.get("year")),
+            )
+
+        cursor.execute("DELETE FROM experience WHERE teacher_id = ?", (teacher_id,))
+        for exp in experiences or []:
+            cursor.execute(
+                """
+                INSERT INTO experience (
+                    teacher_id, institution, position, start_date, end_date, years_of_experience
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    teacher_id,
+                    exp.get("institution"),
+                    exp.get("position"),
+                    exp.get("start_date"),
+                    exp.get("end_date"),
+                    exp.get("years_of_experience"),
+                ),
+            )
+
+        cursor.execute("DELETE FROM class_section WHERE teacher_id = ?", (teacher_id,))
+        for cs in class_sections or []:
+            cursor.execute(
+                "INSERT INTO class_section (teacher_id, class_name, section) VALUES (?, ?, ?)",
+                (teacher_id, cs.get("class_name"), cs.get("section")),
+            )
+
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
 def dal_search_teachers(query, params):
     """
     Generic search function for teachers.

@@ -1,10 +1,20 @@
 # SMS/business/teacher_service.py
 from dal.teacher_dal import (
-    dal_add_teacher_transaction, dal_search_teachers, dal_get_teacher_details_by_id,
-    dal_get_teacher_contacts, dal_check_teacher_exists, dal_update_teacher_security_deposit,
-    dal_check_teacher_uniqueness, dal_get_teacher_subjects, dal_get_teacher_qualifications,
-    dal_get_teacher_experiences, dal_get_teacher_class_sections, dal_get_teacher_security_funds,
-    dal_get_teacher_compensation, dal_mark_teacher_left
+    dal_add_teacher_transaction,
+    dal_search_teachers,
+    dal_get_teacher_details_by_id,
+    dal_get_teacher_contacts,
+    dal_check_teacher_exists,
+    dal_update_teacher_security_deposit,
+    dal_check_teacher_uniqueness,
+    dal_get_teacher_subjects,
+    dal_get_teacher_qualifications,
+    dal_get_teacher_experiences,
+    dal_get_teacher_class_sections,
+    dal_get_teacher_security_funds,
+    dal_get_teacher_compensation,
+    dal_mark_teacher_left,
+    dal_update_teacher_transaction,
 )
 import logging
 import re
@@ -180,13 +190,14 @@ def get_teacher_details_by_id(teacher_id):
         
         # 2. Fetch contacts
         contacts = dal_get_teacher_contacts(teacher_id)
-        details['contacts'] = contacts
+        details["contacts"] = contacts
         
         # 3. Fetch subjects, qualifications, experiences, and class sections
-        details['subjects'] = dal_get_teacher_subjects(teacher_id)
-        details['qualifications'] = dal_get_teacher_qualifications(teacher_id)
-        details['experiences'] = dal_get_teacher_experiences(teacher_id)
-        details['class_sections'] = dal_get_teacher_class_sections(teacher_id)
+        details["subjects"] = dal_get_teacher_subjects(teacher_id)
+        details["qualifications"] = dal_get_teacher_qualifications(teacher_id)
+        details["experiences"] = dal_get_teacher_experiences(teacher_id)
+        details["class_sections"] = dal_get_teacher_class_sections(teacher_id)
+        details["person_id"] = person_id
         
         return details
         
@@ -239,6 +250,84 @@ def update_teacher_security_deposit(teacher_id, additional_amount):
         return True, f"Security deposit updated successfully. New total: {new_total:.2f}"
     except Exception as e:
         logging.error(f"[ERROR] update_teacher_security_deposit: {e}")
+        return False, str(e)
+
+
+def update_teacher(
+    teacher_id,
+    person_id,
+    data,
+    contacts,
+    subjects,
+    qualifications,
+    experiences,
+    class_sections,
+):
+    """
+    Service method to update an existing teacher's profile.
+    """
+    from common.utils import (
+        validate_is_not_future_date,
+        validate_min_age_at_event,
+    )
+
+    try:
+        salary_amount = float(data["salary"])
+    except (ValueError, TypeError):
+        return False, "Salary must be a valid number."
+
+    try:
+        rating_value = int(data["rating"])
+        if rating_value < 1 or rating_value > 5:
+            return False, "Rating must be between 1 and 5."
+    except (ValueError, TypeError):
+        return False, "Rating must be a valid integer between 1 and 5."
+
+    if data["role"] not in TEACHER_ROLES:
+        return False, "Invalid teacher role provided."
+
+    try:
+        security_amount = float(data.get("security_deposit") or 0)
+        if security_amount < 0:
+            return False, "Security deposit cannot be negative."
+        if security_amount > salary_amount:
+            return False, "Security deposit cannot exceed salary."
+    except (ValueError, TypeError):
+        return False, "Security deposit must be a valid number."
+
+    is_valid_date, date_msg = validate_is_not_future_date(data["joining_date"])
+    if not is_valid_date:
+        logging.error(f"[ERROR] update_teacher: {date_msg}")
+        return False, date_msg
+
+    is_valid_age, age_msg = validate_min_age_at_event(data["dob"], data["joining_date"], 18)
+    if not is_valid_age:
+        logging.error(f"[ERROR] update_teacher: {age_msg}")
+        return False, age_msg
+
+    teacher_payload = {
+        "joining_date": data["joining_date"],
+        "salary": salary_amount,
+        "rating": rating_value,
+        "security_deposit": security_amount,
+        "role": data["role"],
+    }
+
+    try:
+        dal_update_teacher_transaction(
+            teacher_id,
+            person_id,
+            teacher_payload,
+            data,
+            contacts,
+            subjects,
+            qualifications,
+            experiences,
+            class_sections,
+        )
+        return True, "Teacher record updated successfully."
+    except Exception as e:
+        logging.error(f"[ERROR] update_teacher: {e}")
         return False, str(e)
 
 def remove_teacher(teacher_id, date_of_leaving):

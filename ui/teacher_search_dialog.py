@@ -6,6 +6,7 @@ from ui.search_teacher_widget import SearchTeacherWidget
 class TeacherSearchDialog(QDialog):
     """
     Dialog wrapper that embeds the SearchTeacherWidget and returns the selected teacher.
+    Mirrors the student update search UX.
     """
 
     def __init__(self, parent=None):
@@ -26,6 +27,7 @@ class TeacherSearchDialog(QDialog):
         layout.addWidget(self.button_box)
 
         self.search_widget.results_tree.itemSelectionChanged.connect(self.on_selection_changed)
+        self.search_widget.results_tree.itemDoubleClicked.connect(lambda *_: self.on_accept())
 
     def on_selection_changed(self):
         teacher_id, _ = self.search_widget.get_selected_teacher()

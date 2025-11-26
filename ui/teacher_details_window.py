@@ -71,11 +71,19 @@ class TeacherDetailsWindow(QWidget):
         self._load_categories()
 
     def _build_full_name(self):
-        first = self.teacher_data.get("first_name", "")
-        middle = self.teacher_data.get("middle_name", "")
-        last = self.teacher_data.get("last_name", "")
-        parts = [part.strip() for part in (first, middle, last) if part and part.strip()]
-        return " ".join(parts) if parts else self.teacher_data.get("full_name", "N/A")
+        parts = []
+        for raw_part in (
+            self.teacher_data.get("first_name"),
+            self.teacher_data.get("middle_name"),
+            self.teacher_data.get("last_name"),
+        ):
+            if raw_part is None:
+                continue
+            part = str(raw_part).strip()
+            if part:
+                parts.append(part)
+        fallback = self.teacher_data.get("full_name", "N/A")
+        return " ".join(parts) if parts else str(fallback)
 
     def _create_category_tree(self):
         tree = QTreeWidget()
@@ -183,16 +191,18 @@ class TeacherDetailsWindow(QWidget):
         rows = []
         for exp in experiences:
             duration_parts = []
-            if exp.get("start_date"):
-                duration_parts.append(exp["start_date"])
-            if exp.get("end_date"):
-                duration_parts.append(exp["end_date"])
+            start = exp.get("start_date")
+            end = exp.get("end_date")
+            if start:
+                duration_parts.append(str(start))
+            if end:
+                duration_parts.append(str(end))
             duration = " - ".join(duration_parts) if duration_parts else "N/A"
             rows.append([
-                exp.get("institution", "N/A"),
-                exp.get("position", "N/A"),
+                str(exp.get("institution", "N/A")),
+                str(exp.get("position", "N/A")),
                 duration,
-                exp.get("years_of_experience", "N/A"),
+                str(exp.get("years_of_experience", "N/A")),
             ])
         return self._build_table_page(headers, rows, "No experience records available.")
 
