@@ -58,15 +58,7 @@ def add_teacher(first_name, middle_name, last_name, father_name,
     except ValueError:
         return False, "Salary must be a valid number.", None
 
-    # 3. Validate rating (1-5)
-    try:
-        rating_value = int(rating)
-        if rating_value < 1 or rating_value > 5:
-            return False, "Rating must be between 1 and 5.", None
-    except ValueError:
-        return False, "Rating must be a valid integer between 1 and 5.", None
-
-    # 3.5 Validate role
+    # 3. Validate role
     if role not in TEACHER_ROLES:
         return False, "Invalid teacher role provided.", None
 
@@ -99,7 +91,7 @@ def add_teacher(first_name, middle_name, last_name, father_name,
         teacher_data = {
             'joining_date': joining_date,
             'salary': salary_amount,
-            'rating': rating_value,
+            'rating': 5,  # Default rating (will be calculated from complaints in leaderboard)
             'security_deposit': security_amount,
             'role': role,
             'is_active': 1,
@@ -276,13 +268,6 @@ def update_teacher(
     except (ValueError, TypeError):
         return False, "Salary must be a valid number."
 
-    try:
-        rating_value = int(data["rating"])
-        if rating_value < 1 or rating_value > 5:
-            return False, "Rating must be between 1 and 5."
-    except (ValueError, TypeError):
-        return False, "Rating must be a valid integer between 1 and 5."
-
     if data["role"] not in TEACHER_ROLES:
         return False, "Invalid teacher role provided."
 
@@ -308,7 +293,7 @@ def update_teacher(
     teacher_payload = {
         "joining_date": data["joining_date"],
         "salary": salary_amount,
-        "rating": rating_value,
+        "rating": 5,  # Default rating (will be calculated from complaints in leaderboard)
         "security_deposit": security_amount,
         "role": data["role"],
     }

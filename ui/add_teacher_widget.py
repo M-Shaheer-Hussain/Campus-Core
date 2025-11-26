@@ -48,7 +48,7 @@ class AddTeacherWidget(QWidget):
                 data['first_name'], data['middle_name'], data['last_name'],
                 data['father_name'], data['dob'], 
                 data['address'], data['gender'], contacts,
-                data['joining_date'], data['salary'], data['rating'],
+                data['joining_date'], data['salary'],
                 data['security_deposit'], role=data['role'],
                 subjects=subjects, qualifications=qualifications,
                 experiences=experiences, class_sections=class_sections

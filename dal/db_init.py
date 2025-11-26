@@ -227,6 +227,18 @@ def initialize_db():
         )
     ''')
 
+    # Complaints table (for teacher complaints)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS complaint (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            complaint_text TEXT NOT NULL,
+            complaint_date DATE NOT NULL,
+            registered_by TEXT,
+            FOREIGN KEY(teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
+        )
+    ''')
+
     # Check if admin exists
     cursor.execute("SELECT id FROM admin LIMIT 1")
     if cursor.fetchone() is None:

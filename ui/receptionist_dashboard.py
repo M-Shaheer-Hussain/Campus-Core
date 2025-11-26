@@ -1,7 +1,7 @@
 # ui/receptionist_dashboard.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-    QFrame, QButtonGroup, QApplication, QStyle
+    QFrame, QButtonGroup, QApplication, QStyle, QScrollArea
 )
 from PyQt5.QtCore import Qt
 from ui.add_student_widget import AddStudentWidget
@@ -10,6 +10,7 @@ from ui.search_student_widget import SearchStudentWidget
 from ui.add_due_widget import AddDueWidget
 from ui.make_payment_widget import MakePaymentWidget
 from ui.payment_history_widget import PaymentHistoryWidget
+from ui.add_complaint_widget import AddComplaintWidget
 
 class ReceptionistDashboard(QWidget):
     def __init__(self, username, go_back_callback=None):
@@ -29,6 +30,7 @@ class ReceptionistDashboard(QWidget):
         self.add_due_icon = style.standardIcon(QStyle.SP_FileLinkIcon)
         self.payment_icon = style.standardIcon(QStyle.SP_DialogApplyButton)
         self.history_icon = style.standardIcon(QStyle.SP_DialogResetButton)
+        self.complaint_icon = style.standardIcon(QStyle.SP_MessageBoxWarning)
         self.logout_icon = style.standardIcon(QStyle.SP_DialogCancelButton)
 
         self.init_ui()
@@ -69,14 +71,26 @@ class ReceptionistDashboard(QWidget):
         
         self.btn_payment_history = QPushButton(" Payment History")
         self.btn_payment_history.setIcon(self.history_icon)
+
+        self.btn_add_complaint = QPushButton(" Add Complaint")
+        self.btn_add_complaint.setIcon(self.complaint_icon)
         
         self.btn_logout = QPushButton(" Logout")
         self.btn_logout.setIcon(self.logout_icon)
         
         buttons = [
             self.btn_add_student, self.btn_update_student, self.btn_search_student,
-            self.btn_add_due, self.btn_make_payment, self.btn_payment_history
+            self.btn_add_due, self.btn_make_payment, self.btn_payment_history,
+            self.btn_add_complaint
         ]
+        
+        # Create scroll area for sidebar
+        sidebar_scroll = QScrollArea()
+        sidebar_scroll.setWidget(sidebar)
+        sidebar_scroll.setWidgetResizable(True)
+        sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        sidebar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        sidebar_scroll.setFixedWidth(220)  # Slightly wider to accommodate scrollbar
         
         sidebar_layout = QVBoxLayout(sidebar)
         for button in buttons:
@@ -108,7 +122,7 @@ class ReceptionistDashboard(QWidget):
         self.content_stack_layout.setContentsMargins(20, 10, 20, 10) # Add padding
         self.content_layout.addWidget(self.content_stack, 1)
 
-        main_layout.addWidget(sidebar)
+        main_layout.addWidget(sidebar_scroll)
         main_layout.addWidget(self.content_area, 1)
 
         # Connect actions
@@ -118,6 +132,7 @@ class ReceptionistDashboard(QWidget):
         self.btn_add_due.clicked.connect(self.show_add_due)
         self.btn_make_payment.clicked.connect(self.show_make_payment)
         self.btn_payment_history.clicked.connect(self.show_payment_history)
+        self.btn_add_complaint.clicked.connect(self.show_add_complaint)
         self.btn_logout.clicked.connect(self.handle_logout)
 
     def _clear_content_area(self):
@@ -156,6 +171,11 @@ class ReceptionistDashboard(QWidget):
     def show_payment_history(self):
         self._clear_content_area()
         widget = PaymentHistoryWidget()
+        self.content_stack_layout.addWidget(widget)
+
+    def show_add_complaint(self):
+        self._clear_content_area()
+        widget = AddComplaintWidget(username=self.username)
         self.content_stack_layout.addWidget(widget)
 
     def handle_logout(self):

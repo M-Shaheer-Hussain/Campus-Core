@@ -1,7 +1,7 @@
 # SMS/ui/admin_dashboard.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-    QFrame, QButtonGroup, QApplication, QStyle, QMessageBox 
+    QFrame, QButtonGroup, QApplication, QStyle, QMessageBox, QScrollArea
 )
 from PyQt5.QtCore import Qt
 from ui.add_student_widget import AddStudentWidget
@@ -15,6 +15,8 @@ from ui.add_teacher_widget import AddTeacherWidget
 from ui.search_teacher_widget import SearchTeacherWidget
 from ui.remove_teacher_widget import RemoveTeacherWidget
 from ui.update_teacher_widget import UpdateTeacherWidget
+from ui.leaderboard_widget import LeaderboardWidget
+from ui.complaint_status_widget import ComplaintStatusWidget
 
 class AdminDashboard(QWidget):
     """
@@ -42,6 +44,8 @@ class AdminDashboard(QWidget):
         self.remove_icon = style.standardIcon(QStyle.SP_DialogDiscardButton) # NEW ICON
         self.add_teacher_icon = style.standardIcon(QStyle.SP_FileDialogNewFolder)
         self.search_teacher_icon = style.standardIcon(QStyle.SP_FileDialogDetailedView)
+        self.leaderboard_icon = style.standardIcon(QStyle.SP_FileDialogListView)
+        self.complaint_status_icon = style.standardIcon(QStyle.SP_MessageBoxWarning)
         self.logout_icon = style.standardIcon(QStyle.SP_DialogCancelButton)
 
         self.init_ui()
@@ -101,6 +105,12 @@ class AdminDashboard(QWidget):
 
         self.btn_remove_teacher = QPushButton(" Remove Teacher")
         self.btn_remove_teacher.setIcon(self.remove_icon)
+
+        self.btn_leaderboard = QPushButton(" Leaderboard")
+        self.btn_leaderboard.setIcon(self.leaderboard_icon)
+
+        self.btn_complaint_status = QPushButton(" Complaint Status")
+        self.btn_complaint_status.setIcon(self.complaint_status_icon)
         
         self.btn_logout = QPushButton(" Logout")
         self.btn_logout.setIcon(self.logout_icon)
@@ -109,8 +119,17 @@ class AdminDashboard(QWidget):
             self.btn_add_student, self.btn_update_student, self.btn_search_student,
             self.btn_add_due, self.btn_make_payment, self.btn_payment_history,
             self.btn_remove_student, # ADDED
-            self.btn_add_teacher, self.btn_update_teacher, self.btn_search_teacher, self.btn_remove_teacher # TEACHER MANAGEMENT
+            self.btn_add_teacher, self.btn_update_teacher, self.btn_search_teacher, self.btn_remove_teacher, # TEACHER MANAGEMENT
+            self.btn_leaderboard, self.btn_complaint_status # LEADERBOARD & COMPLAINTS
         ]
+        
+        # Create scroll area for sidebar
+        sidebar_scroll = QScrollArea()
+        sidebar_scroll.setWidget(sidebar)
+        sidebar_scroll.setWidgetResizable(True)
+        sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        sidebar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        sidebar_scroll.setFixedWidth(220)  # Slightly wider to accommodate scrollbar
         
         sidebar_layout = QVBoxLayout(sidebar)
         for button in buttons:
@@ -141,7 +160,7 @@ class AdminDashboard(QWidget):
         self.content_stack_layout.setContentsMargins(20, 10, 20, 10)
         self.content_layout.addWidget(self.content_stack, 1)
 
-        main_layout.addWidget(sidebar)
+        main_layout.addWidget(sidebar_scroll)
         main_layout.addWidget(self.content_area, 1)
 
         # Connect actions (reusable widgets)
@@ -156,6 +175,8 @@ class AdminDashboard(QWidget):
         self.btn_update_teacher.clicked.connect(self.show_update_teacher)
         self.btn_search_teacher.clicked.connect(self.show_search_teacher) # TEACHER MANAGEMENT
         self.btn_remove_teacher.clicked.connect(self.show_remove_teacher)
+        self.btn_leaderboard.clicked.connect(self.show_leaderboard)
+        self.btn_complaint_status.clicked.connect(self.show_complaint_status)
         self.btn_logout.clicked.connect(self.handle_logout)
 
     def _clear_content_area(self):
@@ -220,6 +241,16 @@ class AdminDashboard(QWidget):
     def show_remove_teacher(self):
         self._clear_content_area()
         widget = RemoveTeacherWidget()
+        self.content_stack_layout.addWidget(widget)
+
+    def show_leaderboard(self):
+        self._clear_content_area()
+        widget = LeaderboardWidget()
+        self.content_stack_layout.addWidget(widget)
+
+    def show_complaint_status(self):
+        self._clear_content_area()
+        widget = ComplaintStatusWidget()
         self.content_stack_layout.addWidget(widget)
 
     def handle_logout(self):

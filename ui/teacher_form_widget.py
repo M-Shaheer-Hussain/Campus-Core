@@ -237,8 +237,6 @@ class TeacherFormWidget(QWidget):
         self.joining_date.setPlaceholderText("YYYY-MM-DD")
         self.salary = QLineEdit()
         self.salary.setPlaceholderText("e.g., 50000")
-        self.rating = QComboBox()
-        self.rating.addItems(["1", "2", "3", "4", "5"])
         self.role_combo = QComboBox()
         self.role_combo.addItems(TEACHER_ROLES)
         self.security_deposit = QLineEdit()
@@ -246,7 +244,6 @@ class TeacherFormWidget(QWidget):
 
         self.form_layout.addRow("Joining Date:", self.joining_date)
         self.form_layout.addRow("Salary:", self.salary)
-        self.form_layout.addRow("Rating (1-5):", self.rating)
         self.form_layout.addRow("Role:", self.role_combo)
         self.form_layout.addRow("Security Deposit:", self.security_deposit)
 
@@ -317,7 +314,6 @@ class TeacherFormWidget(QWidget):
 
     def _set_defaults(self):
         self.joining_date.setText(datetime.now().strftime("%Y-%m-%d"))
-        self.rating.setCurrentIndex(2)
         self.security_deposit.setText("0")
         self._ensure_minimum_contact_row()
 
@@ -400,7 +396,6 @@ class TeacherFormWidget(QWidget):
             "gender": self.gender.currentText(),
             "joining_date": self.joining_date.text().strip(),
             "salary": self.salary.text().strip(),
-            "rating": self.rating.currentText(),
             "role": self.role_combo.currentText(),
             "security_deposit": self.security_deposit.text().strip() or "0",
         }
@@ -521,7 +516,6 @@ class TeacherFormWidget(QWidget):
         self.gender.setCurrentIndex(0)
         self.joining_date.setText(datetime.now().strftime("%Y-%m-%d"))
         self.salary.clear()
-        self.rating.setCurrentIndex(2)
         self.role_combo.setCurrentIndex(0)
         self.security_deposit.setText("0")
 
@@ -558,10 +552,6 @@ class TeacherFormWidget(QWidget):
         self.joining_date.setText(str(teacher_data.get("joining_date", "") or ""))
         salary = teacher_data.get("salary")
         self.salary.setText(str(salary) if salary is not None else "")
-        rating = str(teacher_data.get("rating", "3"))
-        rating_index = self.rating.findText(rating, Qt.MatchFixedString)
-        if rating_index != -1:
-            self.rating.setCurrentIndex(rating_index)
         role = teacher_data.get("role") or TEACHER_ROLES[-1]
         role_index = self.role_combo.findText(role, Qt.MatchFixedString)
         if role_index != -1:
