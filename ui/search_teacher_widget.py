@@ -9,33 +9,50 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont
 from business.teacher_service import search_teachers, get_teacher_details_by_id, update_teacher_security_deposit, get_teacher_security_funds
 from common.utils import validate_is_positive_float, show_warning
+from ui.teacher_details_window import TeacherDetailsWindow
 
 class SecurityDepositDialog(QDialog):
-    """Dialog for entering/updating security deposit."""
-    def __init__(self, parent=None, current_deposit=0, teacher_name=""):
+    """Dialog for adding to a teacher's security deposit."""
+    def __init__(self, parent=None, current_deposit=0, salary=0, teacher_name=""):
         super().__init__(parent)
-        self.setWindowTitle(f"Update Security Deposit - {teacher_name}")
+        self.setWindowTitle(f"Add Security Deposit - {teacher_name}")
         self.setModal(True)
-        self.setMinimumWidth(400)
-        
+        self.setMinimumWidth(420)
+
+        self.current_deposit = float(current_deposit or 0)
+        self.salary = float(salary or 0)
+
         layout = QVBoxLayout(self)
-        
+
         form_layout = QFormLayout()
-        
-        self.current_label = QLabel(f"Current Security Deposit: {current_deposit:.2f}")
+
+        self.current_label = QLabel(f"Current Security Deposit: {self.current_deposit:.2f}")
         form_layout.addRow("", self.current_label)
-        
+
+        salary_label = QLabel(f"Teacher Salary: {self.salary:.2f}")
+        form_layout.addRow("", salary_label)
+
+        remaining_capacity = max(self.salary - self.current_deposit, 0)
+        self.remaining_label = QLabel(f"Maximum additional deposit: {remaining_capacity:.2f}")
+        self.remaining_label.setStyleSheet("color: #2c3e50; font-weight: 600;")
+        form_layout.addRow("", self.remaining_label)
+
         self.amount_input = QLineEdit()
-        self.amount_input.setPlaceholderText("Enter new security deposit amount")
-        form_layout.addRow("New Security Deposit:", self.amount_input)
-        
+        self.amount_input.setPlaceholderText("Enter additional security deposit amount")
+        form_layout.addRow("Additional Amount:", self.amount_input)
+
+        helper = QLabel("Tip: Amount will be ADDED to the current deposit and cannot exceed the salary.")
+        helper.setWordWrap(True)
+        helper.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        form_layout.addRow("", helper)
+
         layout.addLayout(form_layout)
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-        
+
         self.amount_input.setFocus()
         self.amount_input.returnPressed.connect(buttons.accepted.emit)
     
@@ -59,6 +76,7 @@ class SearchTeacherWidget(QWidget):
         self.TEACHER_ID_ROLE = Qt.UserRole + 1
         self.TEACHER_DATA_ROLE = Qt.UserRole + 2
         self.enable_double_click = enable_double_click
+        self.details_window = None
         
         self.init_ui()
         self.init_connections()
@@ -202,20 +220,23 @@ class SearchTeacherWidget(QWidget):
             check_btn.setMinimumHeight(30)
             check_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             check_btn.setToolTip("View security deposit and elapsed time details")
-            check_btn.clicked.connect(lambda checked, tid=teacher.get('teacher_id'),
-                                     name=teacher.get('full_name', ''):
-                                     self.on_check_security_funds(tid, name))
+            check_btn.clicked.connect(
+                lambda checked, tid=teacher.get('teacher_id'),
+                name=teacher.get('full_name', ''): self.on_check_security_funds(tid, name)
+            )
 
             # Update Security button
-            update_btn = QPushButton("Update Deposit")
+            update_btn = QPushButton("Add Deposit")
             update_btn.setObjectName("secondaryButton")
             update_btn.setMinimumHeight(30)
             update_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            update_btn.setToolTip("Modify the security deposit amount")
-            update_btn.clicked.connect(lambda checked, tid=teacher.get('teacher_id'),
-                                      name=teacher.get('full_name', ''),
-                                      current=teacher.get('security_deposit', 0):
-                                      self.on_update_security(tid, name, current))
+            update_btn.setToolTip("Add to the existing security deposit")
+            update_btn.clicked.connect(
+                lambda checked, tid=teacher.get('teacher_id'),
+                name=teacher.get('full_name', ''),
+                current=teacher.get('security_deposit', 0),
+                salary=teacher.get('salary', 0): self.on_update_security(tid, name, current, salary)
+            )
 
             button_layout.addWidget(check_btn)
             button_layout.addWidget(update_btn)
@@ -234,7 +255,7 @@ class SearchTeacherWidget(QWidget):
         return teacher_id, teacher_name
 
     def on_view_details(self, item, column):
-        """Shows full teacher details in a message box."""
+        """Opens the detailed teacher profile window."""
         teacher_id = item.data(0, self.TEACHER_ID_ROLE)
         if not teacher_id:
             return
@@ -244,80 +265,10 @@ class SearchTeacherWidget(QWidget):
             if not details:
                 QMessageBox.warning(self, "Error", "Teacher details not found.")
                 return
-            
-            # Build details message
-            msg = f"""
-<b>Teacher Details</b><br><br>
-<b>Teacher ID:</b> {details.get('teacher_id', '')}<br>
-<b>Full Name:</b> {details.get('first_name', '')} {details.get('middle_name', '') or ''} {details.get('last_name', '')}<br>
-<b>Father Name:</b> {details.get('fathername', '')}<br>
-<b>Date of Birth:</b> {details.get('dob', '')}<br>
-<b>Gender:</b> {details.get('gender', '')}<br>
-<b>Address:</b> {details.get('address', '')}<br>
-<b>Joining Date:</b> {details.get('joining_date', '')}<br>
-<b>Salary:</b> {details.get('salary', 0):.2f}<br>
-<b>Rating:</b> {details.get('rating', '')}/5<br>
-<b>Role:</b> {details.get('role', '')}<br>
-<b>Status:</b> {"Active" if details.get('is_active', 1) else f"Left on {details.get('date_of_leaving', 'N/A')}"}<br>
-<b>Security Deposit:</b> {details.get('security_deposit', 0):.2f}<br><br>
-<b>Contacts:</b><br>
-"""
-            
-            contacts = details.get('contacts', [])
-            if contacts:
-                for contact in contacts:
-                    msg += f"  • {contact.get('type', '').title()}: {contact.get('value', '')} ({contact.get('label', '')})<br>"
-            else:
-                msg += "  No contacts found.<br>"
-            
-            # Add Subjects
-            msg += "<br><b>Subjects:</b><br>"
-            subjects = details.get('subjects', [])
-            if subjects:
-                for subject in subjects:
-                    msg += f"  • {subject}<br>"
-            else:
-                msg += "  No subjects assigned.<br>"
-            
-            # Add Qualifications
-            msg += "<br><b>Qualifications:</b><br>"
-            qualifications = details.get('qualifications', [])
-            if qualifications:
-                for qual in qualifications:
-                    year_str = f" ({qual.get('year', '')})" if qual.get('year') else ""
-                    inst_str = f" - {qual.get('institution', '')}" if qual.get('institution') else ""
-                    msg += f"  • {qual.get('degree', '')}{inst_str}{year_str}<br>"
-            else:
-                msg += "  No qualifications listed.<br>"
-            
-            # Add Experience
-            msg += "<br><b>Experience:</b><br>"
-            experiences = details.get('experiences', [])
-            if experiences:
-                for exp in experiences:
-                    pos_str = f" as {exp.get('position', '')}" if exp.get('position') else ""
-                    start_str = f" from {exp.get('start_date', '')}" if exp.get('start_date') else ""
-                    end_str = f" to {exp.get('end_date', '')}" if exp.get('end_date') else ""
-                    years_str = f" ({exp.get('years_of_experience', '')} years)" if exp.get('years_of_experience') else ""
-                    msg += f"  • {exp.get('institution', '')}{pos_str}{start_str}{end_str}{years_str}<br>"
-            else:
-                msg += "  No experience listed.<br>"
-            
-            # Add Class Sections
-            msg += "<br><b>Class/Section Assignments:</b><br>"
-            class_sections = details.get('class_sections', [])
-            if class_sections:
-                for cs in class_sections:
-                    section_str = f" - Section {cs.get('section', '')}" if cs.get('section') else ""
-                    msg += f"  • {cs.get('class_name', '')}{section_str}<br>"
-            else:
-                msg += "  No class assignments.<br>"
-            
-            msg_box = QMessageBox(self)
-            msg_box.setWindowTitle("Teacher Details")
-            msg_box.setTextFormat(Qt.RichText)
-            msg_box.setText(msg)
-            msg_box.exec_()
+            self.details_window = TeacherDetailsWindow(details)
+            self.details_window.show()
+            self.details_window.raise_()
+            self.details_window.activateWindow()
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error retrieving teacher details:\n{e}")
@@ -352,15 +303,29 @@ class SearchTeacherWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error retrieving security funds:\n{e}")
 
-    def on_update_security(self, teacher_id, teacher_name, current_deposit):
-        """Opens dialog to update security deposit."""
-        dialog = SecurityDepositDialog(self, current_deposit, teacher_name)
+    def on_update_security(self, teacher_id, teacher_name, current_deposit, salary):
+        """Opens dialog to add to the security deposit."""
+        current_deposit = float(current_deposit or 0)
+        salary = float(salary or 0)
+
+        if salary <= 0:
+            QMessageBox.warning(self, "Salary Required", "Cannot add security deposit because salary information is missing.")
+            return
+
+        if current_deposit >= salary:
+            QMessageBox.information(self, "Limit Reached", "Security deposit already equals the teacher's salary.")
+            return
+
+        dialog = SecurityDepositDialog(self, current_deposit, salary, teacher_name)
         
         if dialog.exec_() == QDialog.Accepted:
             new_amount = dialog.get_amount()
             
             if new_amount is None:
                 show_warning(self, "Invalid Input", "Please enter a valid number for security deposit.")
+                return
+            if new_amount == 0:
+                show_warning(self, "Invalid Input", "Additional amount must be greater than zero.")
                 return
             
             # Validate the amount

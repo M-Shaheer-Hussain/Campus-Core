@@ -204,29 +204,39 @@ def check_teacher_exists(teacher_id):
         logging.error(f"[ERROR] check_teacher_exists: {e}")
         return False
 
-def update_teacher_security_deposit(teacher_id, security_deposit):
+def update_teacher_security_deposit(teacher_id, additional_amount):
     """
-    Service method to update teacher security deposit.
+    Service method to add to a teacher's security deposit.
     Returns (success: bool, message: str)
     """
     from common.utils import validate_is_positive_float
-    
-    # Validate security deposit
-    is_valid, error_msg = validate_is_positive_float(str(security_deposit))
+
+    is_valid, error_msg = validate_is_positive_float(str(additional_amount))
     if not is_valid:
         return False, error_msg
-    
+
+    additional_amount = float(additional_amount)
+    if additional_amount == 0:
+        return False, "Additional amount must be greater than zero."
+
     compensation = dal_get_teacher_compensation(teacher_id)
     if not compensation:
         return False, "Teacher not found."
-    
-    new_amount = float(security_deposit)
-    if new_amount > compensation.get('salary', 0):
-        return False, "Security deposit cannot exceed the teacher's salary."
-        
+
+    salary = float(compensation.get('salary') or 0)
+    current_deposit = float(compensation.get('security_deposit') or 0)
+    new_total = current_deposit + additional_amount
+
+    if salary <= 0:
+        return False, "Teacher salary is missing. Cannot update security deposit."
+
+    if new_total > salary:
+        remaining_capacity = max(salary - current_deposit, 0)
+        return False, f"Security deposit cannot exceed salary. You can add up to {remaining_capacity:.2f}."
+
     try:
-        dal_update_teacher_security_deposit(teacher_id, new_amount)
-        return True, "Security deposit updated successfully."
+        dal_update_teacher_security_deposit(teacher_id, new_total)
+        return True, f"Security deposit updated successfully. New total: {new_total:.2f}"
     except Exception as e:
         logging.error(f"[ERROR] update_teacher_security_deposit: {e}")
         return False, str(e)
